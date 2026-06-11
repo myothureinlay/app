@@ -26,6 +26,12 @@
       "expo-sqlite",
       "expo-localization",
       "expo-sharing"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7877b7e4-4304-487b-8d21-7acd11518945"
+      }
+    },
+    "owner": "myoe"
   }
 }
