@@ -13,17 +13,31 @@ import {
 import type {
   AppSettings,
   BackupPayload,
+  BackupMetadata,
   BaseCurrency,
+  Budget,
+  BudgetPeriod,
+  BudgetWithUsage,
   Category,
   CategoryType,
   CreateTransactionInput,
+  CurrencyDefinition,
+  CurrencyKind,
   CurrencyCode,
+  Goal,
+  GoalContribution,
+  GoalStatus,
+  GoalType,
+  GoalWithProgress,
   Transaction,
   TransactionType,
   TransactionWithMeta,
   UpdateTransactionInput,
   Wallet,
 } from '../types';
+import { enrichBudgetWithUsage } from '../logic/budgets';
+import { applyGoalContribution, calculateGoalProgress } from '../logic/goals';
+import { getCategoryRemoveDecision, getWalletRemoveDecision } from '../logic/removal';
 import { createId } from '../utils/ids';
 import { initializeDatabase } from './client';
 import { seedDatabase } from './seed';
@@ -36,7 +50,9 @@ type WalletRow = {
   color: string;
   icon: string;
   sort_order: number;
+  is_default: number;
   is_archived: number;
+  removed_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -50,8 +66,80 @@ type CategoryRow = {
   sort_order: number;
   is_default: number;
   is_archived: number;
+  removed_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type CurrencyRow = {
+  code: string;
+  name: string;
+  symbol: string;
+  decimal_places: number;
+  type: CurrencyKind;
+  is_active: number;
+  is_favorite: number;
+  is_default: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type BudgetRow = {
+  id: string;
+  name: string;
+  category_id: string | null;
+  currency: string;
+  amount_limit: number;
+  period: BudgetPeriod;
+  start_date: string;
+  end_date: string | null;
+  notes: string | null;
+  alert_threshold: number;
+  is_removed: number;
+  created_at: string;
+  updated_at: string;
+  category_name?: string | null;
+  category_color?: string | null;
+};
+
+type GoalRow = {
+  id: string;
+  name: string;
+  type: GoalType;
+  target_amount: number;
+  currency: string;
+  current_amount: number;
+  monthly_target_amount: number | null;
+  deadline: string | null;
+  linked_wallet_id: string | null;
+  notes: string | null;
+  icon: string;
+  color: string;
+  status: GoalStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+type GoalContributionRow = {
+  id: string;
+  goal_id: string;
+  amount: number;
+  currency: string;
+  date: string;
+  note: string | null;
+  transaction_id: string | null;
+  created_at: string;
+};
+
+type BackupMetadataRow = {
+  id: string;
+  provider: 'local' | 'google';
+  mode: 'replace' | 'append';
+  last_backup_at: string | null;
+  auto_backup: 'off' | 'daily' | 'weekly' | 'monthly';
+  status: 'ready' | 'needs_setup' | 'failed';
+  details: string | null;
 };
 
 type TransactionRow = {
@@ -106,7 +194,9 @@ function mapWallet(row: WalletRow): Wallet {
     color: row.color,
     icon: row.icon,
     sortOrder: row.sort_order,
+    isDefault: Boolean(row.is_default),
     isArchived: Boolean(row.is_archived),
+    removedAt: row.removed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -122,8 +212,88 @@ function mapCategory(row: CategoryRow): Category {
     sortOrder: row.sort_order,
     isDefault: Boolean(row.is_default),
     isArchived: Boolean(row.is_archived),
+    removedAt: row.removed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapCurrency(row: CurrencyRow): CurrencyDefinition {
+  return {
+    code: row.code,
+    name: row.name,
+    symbol: row.symbol,
+    decimalPlaces: row.decimal_places,
+    type: row.type,
+    isActive: Boolean(row.is_active),
+    isFavorite: Boolean(row.is_favorite),
+    isDefault: Boolean(row.is_default),
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapBudget(row: BudgetRow): Budget {
+  return {
+    id: row.id,
+    name: row.name,
+    categoryId: row.category_id,
+    currency: row.currency,
+    amountLimit: row.amount_limit,
+    period: row.period,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    notes: row.notes,
+    alertThreshold: row.alert_threshold,
+    isRemoved: Boolean(row.is_removed),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapGoal(row: GoalRow): Goal {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    targetAmount: row.target_amount,
+    currency: row.currency,
+    currentAmount: row.current_amount,
+    monthlyTargetAmount: row.monthly_target_amount,
+    deadline: row.deadline,
+    linkedWalletId: row.linked_wallet_id,
+    notes: row.notes,
+    icon: row.icon,
+    color: row.color,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapGoalContribution(row: GoalContributionRow): GoalContribution {
+  return {
+    id: row.id,
+    goalId: row.goal_id,
+    amount: row.amount,
+    currency: row.currency,
+    date: row.date,
+    note: row.note,
+    transactionId: row.transaction_id,
+    createdAt: row.created_at,
+  };
+}
+
+function mapBackupMetadata(row: BackupMetadataRow): BackupMetadata {
+  return {
+    id: row.id,
+    provider: row.provider,
+    mode: row.mode,
+    lastBackupAt: row.last_backup_at,
+    autoBackup: row.auto_backup,
+    status: row.status,
+    details: row.details,
   };
 }
 
@@ -215,6 +385,69 @@ export async function fetchCategories(includeArchived = false) {
     `SELECT * FROM categories ${includeArchived ? '' : 'WHERE is_archived = 0'} ORDER BY sort_order, name`
   );
   return rows.map(mapCategory);
+}
+
+export async function fetchCurrencies(includeInactive = false) {
+  const db = await getDb();
+  const rows = await db.getAllAsync<CurrencyRow>(
+    `SELECT * FROM currencies ${includeInactive ? '' : 'WHERE is_active = 1'} ORDER BY is_favorite DESC, sort_order, code`
+  );
+  return rows.map(mapCurrency);
+}
+
+export async function createCurrency(input: Pick<CurrencyDefinition, 'code' | 'name' | 'symbol' | 'decimalPlaces' | 'type' | 'isFavorite'>) {
+  const db = await getDb();
+  const createdAt = timestamp();
+  await db.runAsync(
+    `INSERT OR REPLACE INTO currencies (
+      code, name, symbol, decimal_places, type, is_active, is_favorite, is_default, sort_order, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?, ?, ?)`,
+    [
+      input.code.trim().toUpperCase(),
+      input.name.trim(),
+      input.symbol.trim(),
+      input.decimalPlaces,
+      input.type,
+      input.isFavorite ? 1 : 0,
+      Date.now(),
+      createdAt,
+      createdAt,
+    ]
+  );
+}
+
+export async function updateCurrency(input: Pick<CurrencyDefinition, 'code' | 'name' | 'symbol' | 'decimalPlaces' | 'type' | 'isFavorite' | 'isActive'>) {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE currencies SET name = ?, symbol = ?, decimal_places = ?, type = ?, is_favorite = ?, is_active = ?, updated_at = ? WHERE code = ?`,
+    [
+      input.name.trim(),
+      input.symbol.trim(),
+      input.decimalPlaces,
+      input.type,
+      input.isFavorite ? 1 : 0,
+      input.isActive ? 1 : 0,
+      timestamp(),
+      input.code,
+    ]
+  );
+}
+
+export async function removeCurrency(code: string) {
+  const db = await getDb();
+  const usage = await db.getFirstAsync<{ count: number }>(
+    `SELECT
+      (SELECT COUNT(*) FROM wallets WHERE currency = ?) +
+      (SELECT COUNT(*) FROM transactions WHERE currency = ? OR to_currency = ? OR fee_currency = ?) AS count`,
+    [code, code, code, code]
+  );
+
+  if ((usage?.count ?? 0) === 0) {
+    await db.runAsync('DELETE FROM currencies WHERE code = ? AND is_default = 0', code);
+    return;
+  }
+
+  await db.runAsync('UPDATE currencies SET is_active = 0, updated_at = ? WHERE code = ?', [timestamp(), code]);
 }
 
 function buildTransactionWhere(filters: TransactionFilters) {
@@ -440,8 +673,8 @@ export async function createWallet(input: Pick<Wallet, 'name' | 'currency' | 'ba
   const createdAt = timestamp();
   await db.runAsync(
     `INSERT INTO wallets (
-      id, name, currency, balance, color, icon, sort_order, is_archived, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+      id, name, currency, balance, color, icon, sort_order, is_default, is_archived, removed_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, NULL, ?, ?)`,
     [
       createId('wallet'),
       input.name,
@@ -456,13 +689,41 @@ export async function createWallet(input: Pick<Wallet, 'name' | 'currency' | 'ba
   );
 }
 
+export async function removeWallet(id: string) {
+  const db = await getDb();
+  const wallet = await db.getFirstAsync<WalletRow>('SELECT * FROM wallets WHERE id = ?', id);
+  if (!wallet) return getWalletRemoveDecision({ transactionCount: 0, balance: 0, isDefault: false });
+
+  const usage = await db.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM transactions WHERE wallet_id = ? OR to_wallet_id = ?',
+    [id, id]
+  );
+  const decision = getWalletRemoveDecision({
+    transactionCount: usage?.count ?? 0,
+    balance: wallet.balance,
+    isDefault: Boolean(wallet.is_default),
+  });
+
+  if (decision.action === 'hard_delete') {
+    await db.runAsync('DELETE FROM wallets WHERE id = ?', id);
+    return decision;
+  }
+
+  await db.runAsync('UPDATE wallets SET is_archived = 1, removed_at = ?, updated_at = ? WHERE id = ?', [
+    timestamp(),
+    timestamp(),
+    id,
+  ]);
+  return decision;
+}
+
 export async function createCategory(input: Pick<Category, 'name' | 'type' | 'color' | 'icon'>) {
   const db = await getDb();
   const createdAt = timestamp();
   await db.runAsync(
     `INSERT INTO categories (
-      id, name, type, icon, color, sort_order, is_default, is_archived, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`,
+      id, name, type, icon, color, sort_order, is_default, is_archived, removed_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, NULL, ?, ?)`,
     [
       createId('cat'),
       input.name,
@@ -486,39 +747,248 @@ export async function updateCategory(input: Pick<Category, 'id' | 'name' | 'type
 }
 
 export async function archiveCategory(id: string) {
+  return removeCategory(id);
+}
+
+export async function removeCategory(id: string) {
   const db = await getDb();
+  const usage = await db.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM transactions WHERE category_id = ?',
+    id
+  );
+  const decision = getCategoryRemoveDecision(usage?.count ?? 0);
+
+  if (decision.action === 'hard_delete') {
+    await db.runAsync('DELETE FROM categories WHERE id = ?', id);
+    return decision;
+  }
+
   const updatedAt = timestamp();
-  await db.runAsync('UPDATE categories SET is_archived = 1, updated_at = ? WHERE id = ?', [updatedAt, id]);
+  await db.runAsync('UPDATE categories SET is_archived = 1, removed_at = ?, updated_at = ? WHERE id = ?', [
+    updatedAt,
+    updatedAt,
+    id,
+  ]);
+  return decision;
+}
+
+export async function fetchBudgets(includeRemoved = false, transactions?: TransactionWithMeta[]): Promise<BudgetWithUsage[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<BudgetRow>(
+    `SELECT b.*, c.name AS category_name, c.color AS category_color
+     FROM budgets b
+     LEFT JOIN categories c ON c.id = b.category_id
+     ${includeRemoved ? '' : 'WHERE b.is_removed = 0'}
+     ORDER BY b.created_at DESC`
+  );
+  const tx = transactions ?? (await fetchTransactions());
+  return rows.map((row) => enrichBudgetWithUsage(mapBudget(row), tx, row.category_name, row.category_color));
+}
+
+export async function createBudget(input: Omit<Budget, 'id' | 'createdAt' | 'updatedAt' | 'isRemoved'>) {
+  const db = await getDb();
+  const createdAt = timestamp();
+  await db.runAsync(
+    `INSERT INTO budgets (
+      id, name, category_id, currency, amount_limit, period, start_date, end_date, notes,
+      alert_threshold, is_removed, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+    [
+      createId('budget'),
+      input.name,
+      input.categoryId ?? null,
+      input.currency,
+      input.amountLimit,
+      input.period,
+      input.startDate,
+      input.endDate ?? null,
+      input.notes ?? null,
+      input.alertThreshold,
+      createdAt,
+      createdAt,
+    ]
+  );
+}
+
+export async function updateBudget(input: Budget) {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE budgets SET name = ?, category_id = ?, currency = ?, amount_limit = ?, period = ?,
+      start_date = ?, end_date = ?, notes = ?, alert_threshold = ?, is_removed = ?, updated_at = ? WHERE id = ?`,
+    [
+      input.name,
+      input.categoryId ?? null,
+      input.currency,
+      input.amountLimit,
+      input.period,
+      input.startDate,
+      input.endDate ?? null,
+      input.notes ?? null,
+      input.alertThreshold,
+      input.isRemoved ? 1 : 0,
+      timestamp(),
+      input.id,
+    ]
+  );
+}
+
+export async function removeBudget(id: string) {
+  const db = await getDb();
+  await db.runAsync('UPDATE budgets SET is_removed = 1, updated_at = ? WHERE id = ?', [timestamp(), id]);
+}
+
+export async function fetchGoals(includeRemoved = false): Promise<GoalWithProgress[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<GoalRow>(
+    `SELECT * FROM goals ${includeRemoved ? '' : "WHERE status != 'removed'"} ORDER BY created_at DESC`
+  );
+  return rows.map((row) => calculateGoalProgress(mapGoal(row)));
+}
+
+export async function createGoal(input: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) {
+  const db = await getDb();
+  const createdAt = timestamp();
+  await db.runAsync(
+    `INSERT INTO goals (
+      id, name, type, target_amount, currency, current_amount, monthly_target_amount, deadline,
+      linked_wallet_id, notes, icon, color, status, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      createId('goal'),
+      input.name,
+      input.type,
+      input.targetAmount,
+      input.currency,
+      input.currentAmount,
+      input.monthlyTargetAmount ?? null,
+      input.deadline ?? null,
+      input.linkedWalletId ?? null,
+      input.notes ?? null,
+      input.icon,
+      input.color,
+      input.status,
+      createdAt,
+      createdAt,
+    ]
+  );
+}
+
+export async function updateGoal(input: Goal) {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE goals SET name = ?, type = ?, target_amount = ?, currency = ?, current_amount = ?,
+      monthly_target_amount = ?, deadline = ?, linked_wallet_id = ?, notes = ?, icon = ?, color = ?,
+      status = ?, updated_at = ? WHERE id = ?`,
+    [
+      input.name,
+      input.type,
+      input.targetAmount,
+      input.currency,
+      input.currentAmount,
+      input.monthlyTargetAmount ?? null,
+      input.deadline ?? null,
+      input.linkedWalletId ?? null,
+      input.notes ?? null,
+      input.icon,
+      input.color,
+      input.status,
+      timestamp(),
+      input.id,
+    ]
+  );
+}
+
+export async function removeGoal(id: string) {
+  const db = await getDb();
+  await db.runAsync("UPDATE goals SET status = 'removed', updated_at = ? WHERE id = ?", [timestamp(), id]);
+}
+
+export async function addGoalContribution(input: Omit<GoalContribution, 'id' | 'createdAt'>) {
+  const db = await getDb();
+  const goal = await db.getFirstAsync<GoalRow>('SELECT * FROM goals WHERE id = ?', input.goalId);
+  if (!goal) throw new Error('Goal not found');
+  const nextGoal = applyGoalContribution(mapGoal(goal), input);
+  const createdAt = timestamp();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `INSERT INTO goal_contributions (
+        id, goal_id, amount, currency, date, note, transaction_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        createId('goalcontrib'),
+        input.goalId,
+        input.amount,
+        input.currency,
+        input.date,
+        input.note ?? null,
+        input.transactionId ?? null,
+        createdAt,
+      ]
+    );
+    await db.runAsync(
+      `UPDATE goals SET current_amount = ?, status = ?, updated_at = ? WHERE id = ?`,
+      [nextGoal.currentAmount, nextGoal.status, timestamp(), nextGoal.id]
+    );
+  });
+}
+
+export async function fetchGoalContributions(goalId?: string) {
+  const db = await getDb();
+  const rows = await db.getAllAsync<GoalContributionRow>(
+    `SELECT * FROM goal_contributions ${goalId ? 'WHERE goal_id = ?' : ''} ORDER BY date DESC`,
+    goalId ? [goalId] : []
+  );
+  return rows.map(mapGoalContribution);
+}
+
+export async function fetchBackupMetadata() {
+  const db = await getDb();
+  const rows = await db.getAllAsync<BackupMetadataRow>('SELECT * FROM backup_metadata ORDER BY provider');
+  return rows.map(mapBackupMetadata);
 }
 
 export async function clearFinanceData() {
   const db = await getDb();
   await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM goal_contributions');
+    await db.runAsync('DELETE FROM goals');
+    await db.runAsync('DELETE FROM budgets');
     await db.runAsync('DELETE FROM transactions');
     await db.runAsync('DELETE FROM categories');
     await db.runAsync('DELETE FROM wallets');
-    await db.runAsync("DELETE FROM app_settings WHERE key IN ('seeded_v1', 'seeded_v2')");
+    await db.runAsync("DELETE FROM app_settings WHERE key IN ('seeded_v1', 'seeded_v2', 'seeded_v3')");
   });
   await seedDatabase(db);
 }
 
 export async function exportBackupPayload(settings: AppSettings): Promise<BackupPayload> {
-  const [wallets, categories, transactions] = await Promise.all([
+  const [wallets, categories, transactions, currencies, budgets, goals, goalContributions, backupMetadata] = await Promise.all([
     fetchWallets(true),
     fetchCategories(true),
     fetchRawTransactions(true),
+    fetchCurrencies(true),
+    fetchBudgets(true),
+    fetchGoals(true),
+    fetchGoalContributions(),
+    fetchBackupMetadata(),
   ]);
 
   return {
-    version: 2,
+    version: 3,
     exportedAt: timestamp(),
     settings,
     wallets,
     categories,
     transactions,
+    currencies,
+    budgets,
+    goals,
+    goalContributions,
+    backupMetadata,
     exchangeRates: defaultRatesToBase,
     reportMetadata: {
       includesSoftDeletedTransactions: true,
+      includesRemovedCategoriesAndWallets: true,
     },
   };
 }
@@ -529,7 +999,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 export function validateBackupPayload(payload: unknown): asserts payload is BackupPayload {
   if (!isObject(payload)) throw new Error('Backup must be an object');
-  if (payload.version !== 1 && payload.version !== 2) throw new Error('Unsupported backup version');
+  if (payload.version !== 1 && payload.version !== 2 && payload.version !== 3) throw new Error('Unsupported backup version');
   if (!Array.isArray(payload.wallets)) throw new Error('Backup wallets are missing');
   if (!Array.isArray(payload.categories)) throw new Error('Backup categories are missing');
   if (!Array.isArray(payload.transactions)) throw new Error('Backup transactions are missing');
@@ -559,15 +1029,43 @@ export async function importBackupPayload(payload: BackupPayload) {
   const db = await getDb();
 
   await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM goal_contributions');
+    await db.runAsync('DELETE FROM goals');
+    await db.runAsync('DELETE FROM budgets');
     await db.runAsync('DELETE FROM transactions');
     await db.runAsync('DELETE FROM categories');
     await db.runAsync('DELETE FROM wallets');
+    await db.runAsync('DELETE FROM currencies');
+    if (payload.backupMetadata) {
+      await db.runAsync('DELETE FROM backup_metadata');
+    }
+
+    for (const currency of payload.currencies ?? []) {
+      await db.runAsync(
+        `INSERT INTO currencies (
+          code, name, symbol, decimal_places, type, is_active, is_favorite, is_default, sort_order, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          currency.code,
+          currency.name,
+          currency.symbol,
+          currency.decimalPlaces,
+          currency.type,
+          currency.isActive ? 1 : 0,
+          currency.isFavorite ? 1 : 0,
+          currency.isDefault ? 1 : 0,
+          currency.sortOrder,
+          currency.createdAt,
+          currency.updatedAt,
+        ]
+      );
+    }
 
     for (const wallet of payload.wallets) {
       await db.runAsync(
         `INSERT INTO wallets (
-          id, name, currency, balance, color, icon, sort_order, is_archived, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, name, currency, balance, color, icon, sort_order, is_default, is_archived, removed_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           wallet.id,
           wallet.name,
@@ -576,7 +1074,9 @@ export async function importBackupPayload(payload: BackupPayload) {
           wallet.color,
           wallet.icon,
           wallet.sortOrder,
+          wallet.isDefault ? 1 : 0,
           wallet.isArchived ? 1 : 0,
+          wallet.removedAt ?? null,
           wallet.createdAt,
           wallet.updatedAt,
         ]
@@ -586,8 +1086,8 @@ export async function importBackupPayload(payload: BackupPayload) {
     for (const category of payload.categories) {
       await db.runAsync(
         `INSERT INTO categories (
-          id, name, type, icon, color, sort_order, is_default, is_archived, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, name, type, icon, color, sort_order, is_default, is_archived, removed_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           category.id,
           category.name,
@@ -597,6 +1097,7 @@ export async function importBackupPayload(payload: BackupPayload) {
           category.sortOrder,
           category.isDefault ? 1 : 0,
           category.isArchived ? 1 : 0,
+          category.removedAt ?? null,
           category.createdAt,
           category.updatedAt,
         ]
@@ -634,6 +1135,92 @@ export async function importBackupPayload(payload: BackupPayload) {
           transaction.deletedAt ?? null,
           transaction.createdAt,
           transaction.updatedAt,
+        ]
+      );
+    }
+
+    for (const budget of payload.budgets ?? []) {
+      await db.runAsync(
+        `INSERT INTO budgets (
+          id, name, category_id, currency, amount_limit, period, start_date, end_date, notes,
+          alert_threshold, is_removed, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          budget.id,
+          budget.name,
+          budget.categoryId ?? null,
+          budget.currency,
+          budget.amountLimit,
+          budget.period,
+          budget.startDate,
+          budget.endDate ?? null,
+          budget.notes ?? null,
+          budget.alertThreshold,
+          budget.isRemoved ? 1 : 0,
+          budget.createdAt,
+          budget.updatedAt,
+        ]
+      );
+    }
+
+    for (const goal of payload.goals ?? []) {
+      await db.runAsync(
+        `INSERT INTO goals (
+          id, name, type, target_amount, currency, current_amount, monthly_target_amount, deadline,
+          linked_wallet_id, notes, icon, color, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          goal.id,
+          goal.name,
+          goal.type,
+          goal.targetAmount,
+          goal.currency,
+          goal.currentAmount,
+          goal.monthlyTargetAmount ?? null,
+          goal.deadline ?? null,
+          goal.linkedWalletId ?? null,
+          goal.notes ?? null,
+          goal.icon,
+          goal.color,
+          goal.status,
+          goal.createdAt,
+          goal.updatedAt,
+        ]
+      );
+    }
+
+    for (const contribution of payload.goalContributions ?? []) {
+      await db.runAsync(
+        `INSERT INTO goal_contributions (
+          id, goal_id, amount, currency, date, note, transaction_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          contribution.id,
+          contribution.goalId,
+          contribution.amount,
+          contribution.currency,
+          contribution.date,
+          contribution.note ?? null,
+          contribution.transactionId ?? null,
+          contribution.createdAt,
+        ]
+      );
+    }
+
+    for (const metadata of payload.backupMetadata ?? []) {
+      await db.runAsync(
+        `INSERT INTO backup_metadata (
+          id, provider, mode, last_backup_at, auto_backup, status, details, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          metadata.id,
+          metadata.provider,
+          metadata.mode,
+          metadata.lastBackupAt ?? null,
+          metadata.autoBackup,
+          metadata.status,
+          metadata.details ?? null,
+          timestamp(),
         ]
       );
     }

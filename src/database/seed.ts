@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { defaultRatesToBase } from '../constants/currencies';
+import { defaultCurrencyDefinitions, defaultRatesToBase, getRateToBase } from '../constants/currencies';
 import { getWalletDeltas } from '../logic/ledger';
 import type { BaseCurrency, Category, CreateTransactionInput, Wallet } from '../types';
 import { createId } from '../utils/ids';
@@ -18,7 +18,7 @@ function dateDaysAgo(days: number) {
 }
 
 function baseAmount(amount: number, currency: CreateTransactionInput['currency']) {
-  return amount * defaultRatesToBase[baseCurrency][currency];
+  return amount * (defaultRatesToBase[baseCurrency]?.[currency] ?? getRateToBase(baseCurrency, currency));
 }
 
 const wallets: Wallet[] = [
@@ -30,7 +30,9 @@ const wallets: Wallet[] = [
     color: '#16A7A0',
     icon: 'logo-bitcoin',
     sortOrder: 1,
+    isDefault: true,
     isArchived: false,
+    removedAt: null,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   },
@@ -42,7 +44,9 @@ const wallets: Wallet[] = [
     color: '#FF8A4C',
     icon: 'wallet-outline',
     sortOrder: 2,
+    isDefault: true,
     isArchived: false,
+    removedAt: null,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   },
@@ -54,7 +58,9 @@ const wallets: Wallet[] = [
     color: '#5E6AD2',
     icon: 'cash-outline',
     sortOrder: 3,
+    isDefault: true,
     isArchived: false,
+    removedAt: null,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   },
@@ -66,7 +72,9 @@ const wallets: Wallet[] = [
     color: '#22C55E',
     icon: 'card-outline',
     sortOrder: 4,
+    isDefault: true,
     isArchived: false,
+    removedAt: null,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   },
@@ -78,7 +86,9 @@ const wallets: Wallet[] = [
     color: '#F5A524',
     icon: 'business-outline',
     sortOrder: 5,
+    isDefault: true,
     isArchived: false,
+    removedAt: null,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   },
@@ -256,8 +266,8 @@ async function insertDefaultCategories(db: SQLiteDatabase) {
     const createdAt = nowIso();
     await db.runAsync(
       `INSERT OR IGNORE INTO categories (
-        id, name, type, icon, color, sort_order, is_default, is_archived, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`,
+        id, name, type, icon, color, sort_order, is_default, is_archived, removed_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, NULL, ?, ?)`,
       [
         category.id,
         category.name,
@@ -265,6 +275,30 @@ async function insertDefaultCategories(db: SQLiteDatabase) {
         category.icon,
         category.color,
         category.sortOrder,
+        createdAt,
+        createdAt,
+      ]
+    );
+  }
+}
+
+async function insertDefaultCurrencies(db: SQLiteDatabase) {
+  for (const currency of defaultCurrencyDefinitions) {
+    const createdAt = nowIso();
+    await db.runAsync(
+      `INSERT OR IGNORE INTO currencies (
+        code, name, symbol, decimal_places, type, is_active, is_favorite, is_default, sort_order, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        currency.code,
+        currency.name,
+        currency.symbol,
+        currency.decimalPlaces,
+        currency.type,
+        currency.isActive ? 1 : 0,
+        currency.isFavorite ? 1 : 0,
+        currency.isDefault ? 1 : 0,
+        currency.sortOrder,
         createdAt,
         createdAt,
       ]
@@ -329,14 +363,31 @@ export async function seedDatabase(db: SQLiteDatabase) {
     'SELECT value FROM app_settings WHERE key = ?',
     'seeded_v2'
   );
+  const seededV3 = await db.getFirstAsync<{ value: string }>(
+    'SELECT value FROM app_settings WHERE key = ?',
+    'seeded_v3'
+  );
 
   await db.withTransactionAsync(async () => {
+    if (seededV3?.value !== 'true') {
+      await insertDefaultCurrencies(db);
+      await db.runAsync(
+        `INSERT OR IGNORE INTO backup_metadata (
+          id, provider, mode, last_backup_at, auto_backup, status, details, updated_at
+        ) VALUES ('google_backup', 'google', 'replace', NULL, 'off', 'needs_setup', ?, ?)`,
+        [
+          'Google backup is scaffolded. Configure OAuth client IDs before enabling sign-in.',
+          nowIso(),
+        ]
+      );
+    }
+
     if (seededV1?.value !== 'true') {
       for (const wallet of wallets) {
         await db.runAsync(
           `INSERT OR IGNORE INTO wallets (
-            id, name, currency, balance, color, icon, sort_order, is_archived, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            id, name, currency, balance, color, icon, sort_order, is_default, is_archived, removed_at, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
           [
             wallet.id,
             wallet.name,
@@ -345,6 +396,7 @@ export async function seedDatabase(db: SQLiteDatabase) {
             wallet.color,
             wallet.icon,
             wallet.sortOrder,
+            wallet.isDefault ? 1 : 0,
             wallet.isArchived ? 1 : 0,
             wallet.createdAt,
             wallet.updatedAt,
@@ -366,5 +418,6 @@ export async function seedDatabase(db: SQLiteDatabase) {
     }
 
     await insertSetting(db, 'seeded_v2', 'true');
+    await insertSetting(db, 'seeded_v3', 'true');
   });
 }

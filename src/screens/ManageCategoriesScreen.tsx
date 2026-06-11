@@ -5,6 +5,7 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
 import { ChipGroup } from '../components/ChipGroup';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -34,6 +35,46 @@ const categoryIcons = [
   'heart-outline',
   'school-outline',
   'airplane-outline',
+  'basket-outline',
+  'cart-outline',
+  'medical-outline',
+  'fitness-outline',
+  'bus-outline',
+  'train-outline',
+  'bicycle-outline',
+  'speedometer-outline',
+  'wifi-outline',
+  'phone-portrait-outline',
+  'flash-outline',
+  'water-outline',
+  'game-controller-outline',
+  'film-outline',
+  'gift-outline',
+  'people-outline',
+  'person-add-outline',
+  'business-outline',
+  'storefront-outline',
+  'construct-outline',
+  'hammer-outline',
+  'shield-checkmark-outline',
+  'medal-outline',
+  'trophy-outline',
+  'diamond-outline',
+  'wallet-outline',
+  'calculator-outline',
+  'library-outline',
+  'globe-outline',
+  'earth-outline',
+  'trending-up-outline',
+  'trending-down-outline',
+  'bar-chart-outline',
+  'pie-chart-outline',
+  'stats-chart-outline',
+  'calendar-outline',
+  'time-outline',
+  'cloud-outline',
+  'leaf-outline',
+  'flower-outline',
 ];
 
 const iconByType: Record<CategoryType, string> = {
@@ -48,13 +89,16 @@ const iconByType: Record<CategoryType, string> = {
 
 export function ManageCategoriesScreen() {
   const { theme } = useAppPreferences();
-  const { categories, addCategory, editCategory, archiveCategoryById } = useFinance();
+  const { categories, addCategory, editCategory, removeCategoryById } = useFinance();
   const { t } = useI18n();
   const [editing, setEditing] = useState<Category | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<CategoryType>('expense');
   const [color, setColor] = useState(categoryColors[1]);
   const [icon, setIcon] = useState(iconByType.expense);
+  const [iconSearch, setIconSearch] = useState('');
+  const [removeTarget, setRemoveTarget] = useState<Category | null>(null);
+  const filteredIcons = categoryIcons.filter((item) => item.includes(iconSearch.trim().toLowerCase()));
 
   useEffect(() => {
     if (!editing) return;
@@ -116,11 +160,12 @@ export function ManageCategoriesScreen() {
           }}
           options={categoryTypes.map((item) => ({ label: t(`categoryTypes.${item}`), value: item }))}
         />
+        <TextField label={t('manage.searchIcons')} value={iconSearch} onChangeText={setIconSearch} />
         <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '700' }}>{t('common.icon')}</Text>
         <ChipGroup
           value={icon}
           onChange={setIcon}
-          options={categoryIcons.map((item) => ({ label: ' ', value: item, icon: item, color }))}
+          options={(filteredIcons.length > 0 ? filteredIcons : categoryIcons).map((item) => ({ label: ' ', value: item, icon: item, color }))}
         />
         <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '700' }}>{t('common.color')}</Text>
         <ChipGroup
@@ -159,18 +204,31 @@ export function ManageCategoriesScreen() {
                 </View>
                 <AppButton
                   title=""
-                  icon="archive-outline"
+                  icon="trash-outline"
                   variant="ghost"
-                  onPress={async () => {
-                    await archiveCategoryById(category.id);
-                    Alert.alert(t('manage.categoryArchived'));
-                  }}
+                  onPress={() => setRemoveTarget(category)}
                 />
               </Card>
             </Pressable>
           ))
         )}
       </View>
+      <ConfirmDialog
+        visible={Boolean(removeTarget)}
+        title={t('manage.removeCategory')}
+        body={t('manage.removeCategoryBody')}
+        confirmLabel={t('common.remove')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onCancel={() => setRemoveTarget(null)}
+        onConfirm={async () => {
+          if (removeTarget) {
+            const decision = await removeCategoryById(removeTarget.id);
+            Alert.alert(t('common.remove'), decision.warning ?? t('manage.categoryRemoved'));
+          }
+          setRemoveTarget(null);
+        }}
+      />
     </Screen>
   );
 }

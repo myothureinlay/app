@@ -1,4 +1,4 @@
-import { defaultRatesToBase } from '../constants/currencies';
+import { getRateToBase } from '../constants/currencies';
 import type { BaseCurrency, TransactionWithMeta, Wallet } from '../types';
 import { isExpenseLike, isIncomeLike } from './ledger';
 
@@ -54,7 +54,7 @@ function valueInBase(transaction: TransactionWithMeta, baseCurrency: BaseCurrenc
   if (transaction.baseCurrency === baseCurrency) {
     return transaction.baseAmount;
   }
-  return transaction.amount * defaultRatesToBase[baseCurrency][transaction.currency];
+  return transaction.amount * getRateToBase(baseCurrency, transaction.currency);
 }
 
 function monthKey(dateIso: string) {
@@ -250,7 +250,7 @@ export function walletDistribution(wallets: Wallet[], baseCurrency: BaseCurrency
       key: wallet.id,
       label: wallet.name,
       color: wallet.color,
-      total: wallet.balance * defaultRatesToBase[baseCurrency][wallet.currency],
+      total: wallet.balance * getRateToBase(baseCurrency, wallet.currency),
     }))
     .filter((row) => Math.abs(row.total) > 0.000001)
     .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));

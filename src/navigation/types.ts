@@ -6,6 +6,11 @@ export type RootStackParamList = {
   EditTransaction: { transactionId: string };
   ThemePicker: undefined;
   LanguagePicker: undefined;
+  ManageCurrencies: undefined;
+  Budgets: undefined;
+  Goals: undefined;
+  GoogleBackup: undefined;
+  CustomThemeBuilder: undefined;
 };
 
 export type RootTabParamList = {

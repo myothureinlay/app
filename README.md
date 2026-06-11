@@ -4,6 +4,22 @@ A React Native app built with Expo, TypeScript, and SQLite. It stores your finan
 
 This guide is written for beginners on macOS. The normal Android APK build path uses Expo EAS Build in the cloud, so you do not need to install Android Studio just to create an APK.
 
+## Version 3 Highlights
+
+- Practical offline multi-currency ledger with editable transactions, soft delete/restore, transfers, exchange, loans, fees, tax, losses, compensation, refunds, interest, and investments.
+- Custom categories with more line icons, color accents, and safe remove behavior that preserves transaction history.
+- Manage wallets and currencies, including additional fiat and crypto defaults plus custom currency definitions.
+- Reports with date presets, custom date ranges, charts, wallet distribution, loan/debt, tax/fee, interest, loss, compensation, and top expense views.
+- Budgets and goals for monthly planning, over-budget tracking, savings targets, emergency funds, and debt payoff targets.
+- Theme presets plus a custom theme builder, scalable language metadata, and English/Burmese/Thai/Chinese Simplified language options.
+- Full JSON backup/import and CSV exports. Google backup screens are scaffolded but require manual OAuth setup before sign-in can work.
+
+## Before Upgrading From An Older APK
+
+Version 3 includes a safe SQLite migration to `PRAGMA user_version = 3`. It adds currencies, budgets, goals, backup metadata, custom theme support, and remove timestamps without wiping existing wallets, categories, or transactions.
+
+Before installing a test APK over an older APK, open Settings and create a full JSON backup if the old app version supports it. If not, keep a copy of the old APK installed on one device until you confirm the upgraded ledger opens correctly.
+
 ## Fastest path for beginners
 
 1. Push this code to GitHub.
@@ -182,6 +198,21 @@ The workflow:
 - Starts an Android APK build on Expo EAS.
 - Uses `EXPO_TOKEN` from GitHub Secrets.
 
+The EAS preview profile remains configured for APK output in `eas.json`:
+
+```json
+{
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}
+```
+
 ## Create EXPO_TOKEN
 
 1. Log in to [expo.dev](https://expo.dev).
@@ -225,6 +256,20 @@ Important: EAS Build needs the Expo project to be linked to your Expo account. I
 eas project:init
 ```
 
+## Google Backup Status
+
+Version 3 includes the local database tables and app screens for Google backup metadata, Google Sheets backup, Google Drive JSON backup, restore preview, and automatic backup preference.
+
+The actual Google sign-in and cloud write integration is intentionally not enabled yet. To finish it:
+
+1. Create a Google Cloud project.
+2. Enable the Google Drive API and Google Sheets API.
+3. Configure OAuth consent and create OAuth client IDs for Expo/Android.
+4. Add the client IDs through a safe app config or secret-based build setup.
+5. Implement the sign-in and upload/download calls behind the existing Google Backup screen.
+
+Do not commit Google client secrets or private tokens to this repository.
+
 ## Available Scripts
 
 ```bash
@@ -235,7 +280,7 @@ npm run test
 npm run build:android:preview
 ```
 
-`npm run test` currently runs the TypeScript check.
+`npm run test` runs the ledger logic tests, including transaction balance rules, report summaries, category and wallet remove decisions, date ranges, budgets, and goals.
 
 ## Troubleshooting
 

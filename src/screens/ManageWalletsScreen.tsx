@@ -4,6 +4,7 @@ import { Alert, Text, View } from 'react-native';
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
 import { ChipGroup } from '../components/ChipGroup';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Screen } from '../components/Screen';
 import { TextField } from '../components/TextField';
 import { WalletCard } from '../components/WalletCard';
@@ -11,19 +12,20 @@ import { CURRENCIES } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
-import type { CurrencyCode } from '../types';
+import type { CurrencyCode, Wallet } from '../types';
 import { parseNumber } from '../utils/money';
 
 const walletColors = ['#16A7A0', '#FF8A4C', '#5E6AD2', '#22C55E', '#F5A524'];
 
 export function ManageWalletsScreen() {
   const { theme } = useAppPreferences();
-  const { wallets, addWallet } = useFinance();
+  const { wallets, addWallet, removeWalletById } = useFinance();
   const { t } = useI18n();
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState<CurrencyCode>('USDT');
   const [balance, setBalance] = useState('');
   const [color, setColor] = useState(walletColors[0]);
+  const [removeTarget, setRemoveTarget] = useState<Wallet | null>(null);
 
   const submit = async () => {
     if (!name.trim()) {
@@ -59,9 +61,28 @@ export function ManageWalletsScreen() {
 
       <View style={{ gap: 12 }}>
         {wallets.map((wallet) => (
-          <WalletCard key={wallet.id} wallet={wallet} />
+          <View key={wallet.id} style={{ gap: 8 }}>
+            <WalletCard wallet={wallet} />
+            <AppButton title={t('common.remove')} icon="trash-outline" variant="danger" onPress={() => setRemoveTarget(wallet)} />
+          </View>
         ))}
       </View>
+      <ConfirmDialog
+        visible={Boolean(removeTarget)}
+        title={t('manage.removeWallet')}
+        body={t('manage.removeWalletBody')}
+        confirmLabel={t('common.remove')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onCancel={() => setRemoveTarget(null)}
+        onConfirm={async () => {
+          if (removeTarget) {
+            const decision = await removeWalletById(removeTarget.id);
+            Alert.alert(t('common.remove'), decision.warning ?? t('manage.walletRemoved'));
+          }
+          setRemoveTarget(null);
+        }}
+      />
     </Screen>
   );
 }
