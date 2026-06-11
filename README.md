@@ -4,7 +4,17 @@ A React Native app built with Expo, TypeScript, and SQLite. It stores your finan
 
 This guide is written for beginners on macOS. The normal Android APK build path uses Expo EAS Build in the cloud, so you do not need to install Android Studio just to create an APK.
 
-## Version 3 Highlights
+## Version 4 UX Polish
+
+- Replaces many horizontal chip rows with native bottom-sheet pickers and searchable selectors.
+- Reports now use a compact date range control and a filters sheet for currency, category, wallet, and transaction type.
+- Custom theme editing now includes palette suggestions, swatches, color bars, live previews, contrast warning, and optional hex editing.
+- Theme picker is now a richer theme manager with preview cards, built-in themes, a custom theme card, and recently used themes.
+- Dashboard has a more native premium hero area, compact quick actions, a currency picker, and swipeable wallet cards.
+- Google Backup now shows honest setup-required states, connection failure messaging when OAuth is missing, local JSON backup export, and last backup display.
+- No new large dependencies were added for this V4 pass.
+
+## Version 3 Foundation
 
 - Practical offline multi-currency ledger with editable transactions, soft delete/restore, transfers, exchange, loans, fees, tax, losses, compensation, refunds, interest, and investments.
 - Custom categories with more line icons, color accents, and safe remove behavior that preserves transaction history.
@@ -18,7 +28,7 @@ This guide is written for beginners on macOS. The normal Android APK build path 
 
 Version 3 includes a safe SQLite migration to `PRAGMA user_version = 3`. It adds currencies, budgets, goals, backup metadata, custom theme support, and remove timestamps without wiping existing wallets, categories, or transactions.
 
-Before installing a test APK over an older APK, open Settings and create a full JSON backup if the old app version supports it. If not, keep a copy of the old APK installed on one device until you confirm the upgraded ledger opens correctly.
+Version 4 is a UX polish pass and does not add a new SQLite migration. Before installing a test APK over an older APK, open Settings and create a full JSON backup if the old app version supports it. If not, keep a copy of the old APK installed on one device until you confirm the upgraded ledger opens correctly.
 
 ## Fastest path for beginners
 
@@ -258,7 +268,15 @@ eas project:init
 
 ## Google Backup Status
 
-Version 3 includes the local database tables and app screens for Google backup metadata, Google Sheets backup, Google Drive JSON backup, restore preview, and automatic backup preference.
+Version 4 keeps the local database tables and app screens for Google backup metadata, Google Sheets backup, Google Drive JSON backup, restore preview, and automatic backup preference.
+
+Implemented now:
+
+- Clear `Not connected`, `Connecting`, and `Connection failed` UI states.
+- Setup-required message when Google OAuth client IDs are missing.
+- Local JSON backup export from the Google Backup screen.
+- Last local backup date display.
+- Automatic backup preference UI, with a note that cloud automation is disabled until Google setup is complete.
 
 The actual Google sign-in and cloud write integration is intentionally not enabled yet. To finish it:
 
@@ -269,6 +287,32 @@ The actual Google sign-in and cloud write integration is intentionally not enabl
 5. Implement the sign-in and upload/download calls behind the existing Google Backup screen.
 
 Do not commit Google client secrets or private tokens to this repository.
+
+## How To Test V4 UX
+
+Reports date range:
+
+1. Open Reports.
+2. Tap the date range card at the top.
+3. Choose a preset such as `Last month` or `This year`.
+4. Choose `Custom date range`, enter start and end dates, then tap `Apply`.
+5. Confirm report totals, charts, and transaction history update for the selected range.
+
+Reports filters:
+
+1. Open Reports.
+2. Tap `Filters`.
+3. Choose currency, category, wallet, or transaction type.
+4. Tap `Apply`.
+5. Use `Reset filters` to return to all data.
+
+Custom theme editor:
+
+1. Open Settings -> Custom theme builder.
+2. Try a quick palette.
+3. Select a color field, tap swatches or the color bar, and check the live preview.
+4. Open advanced colors if needed and adjust hex values manually.
+5. Tap `Save custom theme`.
 
 ## Available Scripts
 

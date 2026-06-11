@@ -4,8 +4,8 @@ import { Alert, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
-import { ChipGroup } from '../components/ChipGroup';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SectionHeader } from '../components/SectionHeader';
@@ -100,11 +100,15 @@ export function SettingsScreen() {
       </Card>
 
       <SectionHeader title={t('settings.baseCurrency')} />
-      <ChipGroup
-        value={settings.baseCurrency}
-        onChange={(value) => setBaseCurrency(value as BaseCurrency)}
-        options={(baseCurrencyOptions.includes(settings.baseCurrency) ? baseCurrencyOptions : [settings.baseCurrency, ...baseCurrencyOptions]).map((currency) => ({ label: currency, value: currency }))}
-      />
+      <Card>
+        <PickerField
+          label={t('settings.baseCurrency')}
+          value={settings.baseCurrency}
+          onChange={(value) => setBaseCurrency(value as BaseCurrency)}
+          options={(baseCurrencyOptions.includes(settings.baseCurrency) ? baseCurrencyOptions : [settings.baseCurrency, ...baseCurrencyOptions]).map((currency) => ({ label: currency, value: currency }))}
+          searchable
+        />
+      </Card>
 
       <SectionHeader title={t('settings.data')} />
       <Card style={{ gap: 10 }}>

@@ -90,3 +90,17 @@ export function isWithinDateRange(dateIso: string, range: Pick<DateRange, 'from'
   const time = new Date(dateIso).getTime();
   return time >= new Date(range.from).getTime() && time <= new Date(range.to).getTime();
 }
+
+export function formatDateRangeLabel(range: Pick<DateRange, 'from' | 'to'>, locale = 'en-US') {
+  const from = new Date(range.from);
+  const to = new Date(range.to);
+  const sameYear = from.getFullYear() === to.getFullYear();
+  const sameMonth = sameYear && from.getMonth() === to.getMonth();
+
+  const monthDay = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' });
+  const monthDayYear = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const fromLabel = sameMonth ? monthDay.format(from) : sameYear ? monthDay.format(from) : monthDayYear.format(from);
+  const toLabel = monthDayYear.format(to);
+  return `${fromLabel} – ${toLabel}`;
+}

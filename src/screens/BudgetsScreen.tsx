@@ -4,9 +4,9 @@ import { Alert, Text, View } from 'react-native';
 import { AmountInput } from '../components/AmountInput';
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
-import { ChipGroup } from '../components/ChipGroup';
 import { DatePickerField } from '../components/DatePickerField';
 import { EmptyState } from '../components/EmptyState';
+import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { TextField } from '../components/TextField';
@@ -61,14 +61,17 @@ export function BudgetsScreen() {
       <ScreenHeader title={t('budget.title')} subtitle={t('budget.subtitle')} />
       <Card style={{ gap: 14 }}>
         <TextField label={t('budget.name')} value={name} onChangeText={setName} />
-        <ChipGroup
+        <PickerField
+          label={t('common.category')}
           value={categoryId}
           onChange={setCategoryId}
           options={[{ label: t('budget.allCategories'), value: 'all' }, ...categories.map((category) => ({ label: category.name, value: category.id, icon: category.icon, color: category.color }))]}
+          searchable
         />
         <AmountInput label={t('budget.limit')} value={limit} onChangeText={setLimit} />
-        <ChipGroup value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code }))} />
-        <ChipGroup
+        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code }))} searchable />
+        <PickerField
+          label={t('budget.period')}
           value={period}
           onChange={setPeriod}
           options={[

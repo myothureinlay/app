@@ -28,7 +28,15 @@ export type ThemePreset =
   | 'sunset'
   | 'goldBlack'
   | 'minimalGray'
-  | 'myanmarJade';
+  | 'myanmarJade'
+  | 'neonCyan'
+  | 'midnightBlue'
+  | 'champagneGold'
+  | 'sakura'
+  | 'forest'
+  | 'coffee'
+  | 'ruby'
+  | 'iceBlue';
 export type ThemePreference = ThemePreset | 'system' | 'custom';
 export type LanguageCode = 'en' | 'my' | 'th' | 'zh-Hans';
 export type CurrencyFilter = 'all' | CurrencyCode;
@@ -44,6 +52,7 @@ export interface AppSettings {
   showRemovedWallets?: boolean;
   googleAutoBackup?: 'off' | 'daily' | 'weekly' | 'monthly';
   customTheme?: CustomThemeSettings;
+  recentThemes?: ThemePreference[];
 }
 
 export interface CustomThemeSettings {

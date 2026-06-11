@@ -5,10 +5,10 @@ import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
 import { ChipGroup } from '../components/ChipGroup';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
 import { TextField } from '../components/TextField';
 import { WalletCard } from '../components/WalletCard';
-import { CURRENCIES } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
@@ -19,13 +19,14 @@ const walletColors = ['#16A7A0', '#FF8A4C', '#5E6AD2', '#22C55E', '#F5A524'];
 
 export function ManageWalletsScreen() {
   const { theme } = useAppPreferences();
-  const { wallets, addWallet, removeWalletById } = useFinance();
+  const { wallets, currencies, addWallet, removeWalletById } = useFinance();
   const { t } = useI18n();
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState<CurrencyCode>('USDT');
   const [balance, setBalance] = useState('');
   const [color, setColor] = useState(walletColors[0]);
   const [removeTarget, setRemoveTarget] = useState<Wallet | null>(null);
+  const currencyOptions = currencies.length > 0 ? currencies.filter((item) => item.isActive).map((item) => item.code) : ['USD', 'USDT', 'MMK', 'THB'];
 
   const submit = async () => {
     if (!name.trim()) {
@@ -49,7 +50,7 @@ export function ManageWalletsScreen() {
       <Card style={{ gap: 16 }}>
         <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '900' }}>{t('manage.addWallet')}</Text>
         <TextField label={t('manage.walletName')} value={name} onChangeText={setName} />
-        <ChipGroup value={currency} onChange={setCurrency} options={CURRENCIES.map((item) => ({ label: item, value: item }))} />
+        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((item) => ({ label: item, value: item }))} searchable />
         <TextField label={t('common.balance')} value={balance} onChangeText={setBalance} keyboardType="decimal-pad" />
         <ChipGroup
           value={color}
