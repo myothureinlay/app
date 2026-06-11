@@ -1,18 +1,20 @@
-import { currencySymbols } from '../constants/currencies';
+import { getCurrencyDecimalPlaces, getCurrencySymbol } from '../constants/currencies';
 import type { BaseCurrency, CurrencyCode } from '../types';
 
 export function formatMoney(amount: number, currency: CurrencyCode | BaseCurrency) {
-  const rounded = currency === 'MMK' ? Math.round(amount) : Math.round(amount * 100) / 100;
+  const decimalPlaces = getCurrencyDecimalPlaces(currency);
+  const factor = 10 ** decimalPlaces;
+  const rounded = Math.round(amount * factor) / factor;
   const formatted = new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: currency === 'MMK' ? 0 : 2,
-    minimumFractionDigits: currency === 'MMK' ? 0 : 2,
+    maximumFractionDigits: decimalPlaces,
+    minimumFractionDigits: decimalPlaces > 4 ? 2 : decimalPlaces,
   }).format(rounded);
 
   if (currency === 'USDT') {
     return `${formatted} USDT`;
   }
 
-  return `${currencySymbols[currency]} ${formatted}`;
+  return `${getCurrencySymbol(currency)} ${formatted}`;
 }
 
 export function parseNumber(value: string) {

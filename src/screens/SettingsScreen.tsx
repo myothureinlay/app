@@ -9,7 +9,6 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SectionHeader } from '../components/SectionHeader';
-import { BASE_CURRENCIES } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
@@ -23,9 +22,10 @@ function stamp() {
 export function SettingsScreen() {
   const navigation = useNavigation();
   const { theme, settings, setBaseCurrency, updateSettings } = useAppPreferences();
-  const { createCsv, createReportsCsv, createBackup, importBackup, clearData } = useFinance();
+  const { createCsv, createReportsCsv, createBackup, importBackup, clearData, currencies } = useFinance();
   const { t } = useI18n();
   const [confirmClear, setConfirmClear] = useState(false);
+  const baseCurrencyOptions = currencies.filter((currency) => currency.isActive).map((currency) => currency.code);
 
   const exportCsv = async () => {
     const uri = await saveAndShareFile(
@@ -87,6 +87,12 @@ export function SettingsScreen() {
           variant="secondary"
           onPress={() => navigation.navigate('LanguagePicker' as never)}
         />
+        <AppButton
+          title={t('settings.customThemeBuilder')}
+          icon="eyedrop-outline"
+          variant="secondary"
+          onPress={() => navigation.navigate('CustomThemeBuilder' as never)}
+        />
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '800' }}>{t('settings.iconStyle')}</Text>
           <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '900' }}>{t('settings.lineIcons')}</Text>
@@ -97,7 +103,7 @@ export function SettingsScreen() {
       <ChipGroup
         value={settings.baseCurrency}
         onChange={(value) => setBaseCurrency(value as BaseCurrency)}
-        options={BASE_CURRENCIES.map((currency) => ({ label: currency, value: currency }))}
+        options={(baseCurrencyOptions.includes(settings.baseCurrency) ? baseCurrencyOptions : [settings.baseCurrency, ...baseCurrencyOptions]).map((currency) => ({ label: currency, value: currency }))}
       />
 
       <SectionHeader title={t('settings.data')} />
@@ -120,6 +126,24 @@ export function SettingsScreen() {
           variant="secondary"
           onPress={() => Alert.alert(t('settings.manageExchangeRates'), t('settings.baseCurrency'))}
         />
+        <AppButton
+          title={t('settings.manageCurrencies')}
+          icon="cash-outline"
+          variant="secondary"
+          onPress={() => navigation.navigate('ManageCurrencies' as never)}
+        />
+        <AppButton
+          title={t('settings.budgets')}
+          icon="speedometer-outline"
+          variant="secondary"
+          onPress={() => navigation.navigate('Budgets' as never)}
+        />
+        <AppButton
+          title={t('settings.goals')}
+          icon="flag-outline"
+          variant="secondary"
+          onPress={() => navigation.navigate('Goals' as never)}
+        />
       </Card>
 
       <SectionHeader title={t('settings.backupRestore')} />
@@ -128,6 +152,12 @@ export function SettingsScreen() {
         <AppButton title={t('settings.exportReportsCsv')} icon="analytics-outline" variant="secondary" onPress={exportReports} />
         <AppButton title={t('settings.backupJson')} icon="archive-outline" variant="secondary" onPress={backupJson} />
         <AppButton title={t('settings.importJson')} icon="cloud-upload-outline" variant="secondary" onPress={importJson} />
+        <AppButton
+          title={t('settings.googleBackup')}
+          icon="logo-google"
+          variant="secondary"
+          onPress={() => navigation.navigate('GoogleBackup' as never)}
+        />
         <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4 }} />
         <AppButton title={t('settings.clearData')} icon="trash-outline" variant="danger" onPress={() => setConfirmClear(true)} />
       </Card>

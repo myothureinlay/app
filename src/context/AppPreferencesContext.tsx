@@ -5,7 +5,7 @@ import { useColorScheme } from 'react-native';
 
 import { setI18nLocale } from '../i18n';
 import { supportedLanguages } from '../i18n/languages';
-import { themes, type AppTheme, type ColorSchemeName } from '../theme/colors';
+import { buildCustomTheme, defaultCustomTheme, themes, type AppTheme, type ColorSchemeName } from '../theme/colors';
 import type { ThemePreset } from '../types';
 import type { AppSettings, BaseCurrency, LanguageCode, ThemePreference } from '../types';
 
@@ -24,6 +24,8 @@ const defaultSettings: AppSettings = {
   baseCurrency: 'USD',
   dashboardCurrencyFilter: 'all',
   iconStyle: 'line',
+  googleAutoBackup: 'off',
+  customTheme: defaultCustomTheme,
 };
 
 interface PreferencesContextValue {
@@ -59,8 +61,11 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
   }, []);
 
   const resolvedTheme: ThemePreset =
-    settings.theme === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : settings.theme;
-  const resolvedScheme: ColorSchemeName = themes[resolvedTheme].scheme;
+    settings.theme === 'system' || settings.theme === 'custom'
+      ? (systemScheme === 'dark' ? 'dark' : 'light')
+      : settings.theme;
+  const activeTheme = settings.theme === 'custom' ? buildCustomTheme(settings.customTheme) : themes[resolvedTheme];
+  const resolvedScheme: ColorSchemeName = activeTheme.scheme;
 
   const updateSettings = async (patch: Partial<AppSettings>) => {
     const next = { ...settings, ...patch };
@@ -72,7 +77,7 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
   const value = useMemo<PreferencesContextValue>(
     () => ({
       settings,
-      theme: themes[resolvedTheme],
+      theme: activeTheme,
       resolvedScheme,
       updateSettings,
       setThemePreference: (theme) => updateSettings({ theme }),

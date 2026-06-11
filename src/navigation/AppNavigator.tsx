@@ -6,10 +6,15 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useI18n } from '../i18n/useI18n';
 import { AddTransactionScreen } from '../screens/AddTransactionScreen';
+import { BudgetsScreen } from '../screens/BudgetsScreen';
+import { CustomThemeBuilderScreen } from '../screens/CustomThemeBuilderScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { EditTransactionScreen } from '../screens/EditTransactionScreen';
+import { GoalsScreen } from '../screens/GoalsScreen';
+import { GoogleBackupScreen } from '../screens/GoogleBackupScreen';
 import { LanguagePickerScreen } from '../screens/LanguagePickerScreen';
 import { ManageCategoriesScreen } from '../screens/ManageCategoriesScreen';
+import { ManageCurrenciesScreen } from '../screens/ManageCurrenciesScreen';
 import { ManageWalletsScreen } from '../screens/ManageWalletsScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
@@ -113,6 +118,11 @@ export function AppNavigator() {
         />
         <Stack.Screen name="ThemePicker" component={ThemePickerScreen} options={{ title: t('nav.themes') }} />
         <Stack.Screen name="LanguagePicker" component={LanguagePickerScreen} options={{ title: t('nav.languages') }} />
+        <Stack.Screen name="ManageCurrencies" component={ManageCurrenciesScreen} options={{ title: t('nav.currencies') }} />
+        <Stack.Screen name="Budgets" component={BudgetsScreen} options={{ title: t('nav.budgets') }} />
+        <Stack.Screen name="Goals" component={GoalsScreen} options={{ title: t('nav.goals') }} />
+        <Stack.Screen name="GoogleBackup" component={GoogleBackupScreen} options={{ title: t('nav.googleBackup') }} />
+        <Stack.Screen name="CustomThemeBuilder" component={CustomThemeBuilderScreen} options={{ title: t('nav.customTheme') }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

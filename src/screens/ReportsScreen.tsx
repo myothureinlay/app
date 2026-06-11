@@ -12,15 +12,16 @@ import {
 } from '../components/ChartCard';
 import { ChipGroup } from '../components/ChipGroup';
 import { EmptyState } from '../components/EmptyState';
+import { DatePickerField } from '../components/DatePickerField';
 import { ReportCard } from '../components/ReportCard';
 import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
 import { TransactionItem } from '../components/TransactionItem';
 import { WalletCard } from '../components/WalletCard';
-import { CURRENCIES } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
+import { dateRangeForPreset, isWithinDateRange, type DateRangePreset } from '../logic/dateRanges';
 import {
   calculateReportSummary,
   groupExpensesByCurrency,
@@ -34,42 +35,46 @@ import type { CurrencyCode, TransactionWithMeta } from '../types';
 import { endOfMonth, formatMonth, shiftMonth, startOfMonth } from '../utils/dates';
 import { formatMoney } from '../utils/money';
 
-type RangeMode = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+type RangeMode = DateRangePreset;
 
 function inMonth(transaction: TransactionWithMeta, month: Date) {
   const date = new Date(transaction.date);
   return date >= startOfMonth(month) && date <= endOfMonth(month);
 }
 
-function inRangeMode(transaction: TransactionWithMeta, mode: RangeMode, month: Date) {
-  const date = new Date(transaction.date);
-  const now = new Date();
-  if (mode === 'daily') return date.toDateString() === now.toDateString();
-  if (mode === 'weekly') {
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-    weekStart.setHours(0, 0, 0, 0);
-    return date >= weekStart && date <= now;
-  }
-  if (mode === 'yearly') return date.getFullYear() === now.getFullYear();
-  return inMonth(transaction, month);
-}
-
 export function ReportsScreen() {
   const navigation = useNavigation<any>();
   const { theme, settings } = useAppPreferences();
-  const { wallets, categories, transactions } = useFinance();
+  const { wallets, categories, currencies, transactions } = useFinance();
   const { t, locale } = useI18n();
   const [month, setMonth] = useState(startOfMonth());
-  const [rangeMode, setRangeMode] = useState<RangeMode>('monthly');
+  const [rangeMode, setRangeMode] = useState<RangeMode>('this_month');
+  const [customFrom, setCustomFrom] = useState(new Date().toISOString().slice(0, 10));
+  const [customTo, setCustomTo] = useState(new Date().toISOString().slice(0, 10));
   const [currency, setCurrency] = useState<'all' | CurrencyCode>('all');
   const [categoryId, setCategoryId] = useState('all');
   const [walletId, setWalletId] = useState('all');
+  const currencyOptions = currencies.length > 0 ? currencies.filter((item) => item.isActive).map((item) => item.code) : ['USD'];
+
+  const activeRange = useMemo(
+    () =>
+      dateRangeForPreset(
+        rangeMode,
+        month,
+        rangeMode === 'custom'
+          ? {
+              from: customFrom,
+              to: customTo,
+            }
+          : undefined
+      ),
+    [rangeMode, month, customFrom, customTo]
+  );
 
   const filtered = useMemo(
     () =>
       transactions.filter((transaction) => {
-        if (!inRangeMode(transaction, rangeMode, month)) return false;
+        if (!isWithinDateRange(transaction.date, activeRange)) return false;
         if (currency !== 'all' && transaction.currency !== currency) return false;
         if (categoryId !== 'all' && transaction.categoryId !== categoryId) return false;
         if (walletId !== 'all' && transaction.walletId !== walletId && transaction.toWalletId !== walletId) {
@@ -77,7 +82,7 @@ export function ReportsScreen() {
         }
         return true;
       }),
-    [transactions, rangeMode, month, currency, categoryId, walletId]
+    [transactions, activeRange, currency, categoryId, walletId]
   );
 
   const summary = calculateReportSummary(filtered, settings.baseCurrency);
@@ -103,10 +108,14 @@ export function ReportsScreen() {
         value={rangeMode}
         onChange={setRangeMode}
         options={[
-          { label: t('reports.dailySummary'), value: 'daily' },
-          { label: t('reports.weeklySummary'), value: 'weekly' },
-          { label: t('reports.monthlySummary'), value: 'monthly' },
-          { label: t('reports.yearlySummary'), value: 'yearly' },
+          { label: t('dateRange.today'), value: 'today' },
+          { label: t('dateRange.yesterday'), value: 'yesterday' },
+          { label: t('dateRange.thisWeek'), value: 'this_week' },
+          { label: t('dateRange.lastWeek'), value: 'last_week' },
+          { label: t('dateRange.thisMonth'), value: 'this_month' },
+          { label: t('dateRange.lastMonth'), value: 'last_month' },
+          { label: t('dateRange.thisQuarter'), value: 'this_quarter' },
+          { label: t('dateRange.thisYear'), value: 'this_year' },
           { label: t('reports.customRange'), value: 'custom' },
         ]}
       />
@@ -123,13 +132,34 @@ export function ReportsScreen() {
         <AppButton title="" icon="chevron-forward-outline" variant="secondary" onPress={() => setMonth(shiftMonth(month, 1))} />
       </View>
 
+      {rangeMode === 'custom' ? (
+        <View style={{ gap: 12 }}>
+          <DatePickerField label={t('dateRange.startDate')} value={customFrom} onChangeText={setCustomFrom} />
+          <DatePickerField label={t('dateRange.endDate')} value={customTo} onChangeText={setCustomTo} />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <AppButton title={t('dateRange.apply')} icon="checkmark-outline" onPress={() => undefined} style={{ flex: 1 }} />
+            <AppButton
+              title={t('dateRange.clear')}
+              icon="close-outline"
+              variant="secondary"
+              onPress={() => {
+                setRangeMode('this_month');
+                setCustomFrom(new Date().toISOString().slice(0, 10));
+                setCustomTo(new Date().toISOString().slice(0, 10));
+              }}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </View>
+      ) : null}
+
       <SectionHeader title={t('reports.filters')} />
       <ChipGroup
         value={currency}
         onChange={setCurrency}
         options={[
           { label: t('common.all'), value: 'all' },
-          ...CURRENCIES.map((item) => ({ label: item, value: item })),
+          ...currencyOptions.map((item) => ({ label: item, value: item })),
         ]}
       />
       <ChipGroup

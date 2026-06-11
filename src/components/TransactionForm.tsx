@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 
-import { BASE_CURRENCIES, defaultRatesToBase } from '../constants/currencies';
+import { BASE_CURRENCIES, getRateToBase } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
@@ -44,7 +44,7 @@ interface TransactionFormProps {
 
 export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: TransactionFormProps) {
   const { theme, settings, setBaseCurrency } = useAppPreferences();
-  const { wallets, categories } = useFinance();
+  const { wallets, categories, currencies } = useFinance();
   const { t } = useI18n();
 
   const firstWallet = wallets[0];
@@ -61,9 +61,7 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
   const [feeAmount, setFeeAmount] = useState(initialTransaction?.feeAmount ? String(initialTransaction.feeAmount) : '');
   const [feeCurrency, setFeeCurrency] = useState<CurrencyCode>(initialTransaction?.feeCurrency ?? currency);
   const [baseCurrency, setBaseCurrencyState] = useState<BaseCurrency>(initialTransaction?.baseCurrency ?? settings.baseCurrency);
-  const [exchangeRate, setExchangeRate] = useState(
-    String(initialTransaction?.exchangeRate ?? defaultRatesToBase[settings.baseCurrency][currency])
-  );
+  const [exchangeRate, setExchangeRate] = useState(String(initialTransaction?.exchangeRate ?? getRateToBase(settings.baseCurrency, currency)));
 
   const selectedWallet = wallets.find((wallet) => wallet.id === walletId);
   const toWallet = wallets.find((wallet) => wallet.id === toWalletId);
@@ -72,8 +70,9 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
   const supportsCounterparty = transactionSupportsCounterparty(type);
   const availableCategories = categories.filter((category) => category.type === categoryTypeForTransaction(type));
   const amountNumber = parseNumber(amount);
-  const exchangeRateNumber = parseNumber(exchangeRate) || defaultRatesToBase[baseCurrency][currency];
+  const exchangeRateNumber = parseNumber(exchangeRate) || getRateToBase(baseCurrency, currency);
   const baseAmount = amountNumber * exchangeRateNumber;
+  const baseCurrencyOptions = currencies.length > 0 ? currencies.filter((item) => item.isActive).map((item) => item.code) : BASE_CURRENCIES;
 
   useEffect(() => {
     if (!walletId && wallets[0]) {
@@ -92,7 +91,7 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
 
   useEffect(() => {
     if (!initialTransaction) {
-      setExchangeRate(String(defaultRatesToBase[baseCurrency][currency]));
+      setExchangeRate(String(getRateToBase(baseCurrency, currency)));
     }
   }, [currency, baseCurrency, initialTransaction]);
 
@@ -230,7 +229,7 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
             setBaseCurrencyState(value);
             setBaseCurrency(value);
           }}
-          options={BASE_CURRENCIES.map((item) => ({ value: item, label: item }))}
+          options={baseCurrencyOptions.map((item) => ({ value: item, label: item }))}
         />
         <TextField label={t('transaction.exchangeRate')} value={exchangeRate} onChangeText={setExchangeRate} keyboardType="decimal-pad" />
         <TextField label={t('transaction.baseAmount')} value={String(Math.round(baseAmount * 100) / 100)} editable={false} />

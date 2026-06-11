@@ -1,5 +1,5 @@
-export type CurrencyCode = 'USDT' | 'USD' | 'MMK' | 'THB';
-export type BaseCurrency = 'USD' | 'MMK' | 'THB';
+export type CurrencyCode = string;
+export type BaseCurrency = string;
 export type TransactionType =
   | 'income'
   | 'expense'
@@ -29,7 +29,7 @@ export type ThemePreset =
   | 'goldBlack'
   | 'minimalGray'
   | 'myanmarJade';
-export type ThemePreference = ThemePreset | 'system';
+export type ThemePreference = ThemePreset | 'system' | 'custom';
 export type LanguageCode = 'en' | 'my' | 'th' | 'zh-Hans';
 export type CurrencyFilter = 'all' | CurrencyCode;
 export type IconStyle = 'line';
@@ -41,6 +41,24 @@ export interface AppSettings {
   dashboardCurrencyFilter: CurrencyFilter;
   iconStyle: IconStyle;
   accentColor?: string;
+  showRemovedWallets?: boolean;
+  googleAutoBackup?: 'off' | 'daily' | 'weekly' | 'monthly';
+  customTheme?: CustomThemeSettings;
+}
+
+export interface CustomThemeSettings {
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string;
+  surface: string;
+  text: string;
+  success: string;
+  warning: string;
+  danger: string;
+  border: string;
+  borderRadius: number;
+  cardStyle: 'flat' | 'soft' | 'elevated';
 }
 
 export interface Wallet {
@@ -51,7 +69,9 @@ export interface Wallet {
   color: string;
   icon: string;
   sortOrder: number;
+  isDefault: boolean;
   isArchived: boolean;
+  removedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -67,6 +87,7 @@ export interface Category {
   sortOrder: number;
   isDefault: boolean;
   isArchived: boolean;
+  removedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -142,12 +163,108 @@ export interface SummaryTotals {
 }
 
 export interface BackupPayload {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   exportedAt: string;
   settings: AppSettings;
   wallets: Wallet[];
   categories: Category[];
   transactions: Transaction[];
+  currencies?: CurrencyDefinition[];
+  budgets?: Budget[];
+  goals?: Goal[];
+  goalContributions?: GoalContribution[];
+  backupMetadata?: BackupMetadata[];
   exchangeRates?: Record<string, Record<string, number>>;
   reportMetadata?: Record<string, unknown>;
+}
+
+export type CurrencyKind = 'fiat' | 'crypto' | 'custom';
+
+export interface CurrencyDefinition {
+  code: CurrencyCode;
+  name: string;
+  symbol: string;
+  decimalPlaces: number;
+  type: CurrencyKind;
+  isActive: boolean;
+  isFavorite: boolean;
+  isDefault: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BudgetPeriod = 'weekly' | 'monthly' | 'yearly' | 'custom';
+
+export interface Budget {
+  id: string;
+  name: string;
+  categoryId?: string | null;
+  currency: CurrencyCode;
+  amountLimit: number;
+  period: BudgetPeriod;
+  startDate: string;
+  endDate?: string | null;
+  notes?: string | null;
+  alertThreshold: number;
+  isRemoved: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BudgetWithUsage extends Budget {
+  categoryName?: string | null;
+  categoryColor?: string | null;
+  usedAmount: number;
+  remainingAmount: number;
+  progress: number;
+  isOverBudget: boolean;
+}
+
+export type GoalStatus = 'active' | 'completed' | 'paused' | 'removed';
+export type GoalType = 'target_amount' | 'monthly_saving' | 'emergency_fund' | 'debt_payoff' | 'custom';
+
+export interface Goal {
+  id: string;
+  name: string;
+  type: GoalType;
+  targetAmount: number;
+  currency: CurrencyCode;
+  currentAmount: number;
+  monthlyTargetAmount?: number | null;
+  deadline?: string | null;
+  linkedWalletId?: string | null;
+  notes?: string | null;
+  icon: string;
+  color: string;
+  status: GoalStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GoalContribution {
+  id: string;
+  goalId: string;
+  amount: number;
+  currency: CurrencyCode;
+  date: string;
+  note?: string | null;
+  transactionId?: string | null;
+  createdAt: string;
+}
+
+export interface GoalWithProgress extends Goal {
+  progress: number;
+  remainingAmount: number;
+  suggestedMonthlySaving: number;
+}
+
+export interface BackupMetadata {
+  id: string;
+  provider: 'local' | 'google';
+  mode: 'replace' | 'append';
+  lastBackupAt?: string | null;
+  autoBackup: 'off' | 'daily' | 'weekly' | 'monthly';
+  status: 'ready' | 'needs_setup' | 'failed';
+  details?: string | null;
 }
