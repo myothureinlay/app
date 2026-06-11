@@ -1,20 +1,24 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
 
-export default function App() {
+import { AppPreferencesProvider, useAppPreferences } from './src/context/AppPreferencesContext';
+import { FinanceProvider } from './src/context/FinanceContext';
+import { AppNavigator } from './src/navigation/AppNavigator';
+
+function Root() {
+  const { resolvedScheme } = useAppPreferences();
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <FinanceProvider>
+      <AppNavigator />
+      <StatusBar style={resolvedScheme === 'dark' ? 'light' : 'dark'} />
+    </FinanceProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <AppPreferencesProvider>
+      <Root />
+    </AppPreferencesProvider>
+  );
+}
