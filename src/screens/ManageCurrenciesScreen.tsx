@@ -3,8 +3,8 @@ import { Alert, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
-import { ChipGroup } from '../components/ChipGroup';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { TextField } from '../components/TextField';
@@ -78,7 +78,8 @@ export function ManageCurrenciesScreen() {
         <TextField label={t('currency.name')} value={name} onChangeText={setName} />
         <TextField label={t('currency.symbol')} value={symbol} onChangeText={setSymbol} />
         <TextField label={t('currency.decimals')} value={decimalPlaces} onChangeText={setDecimalPlaces} keyboardType="number-pad" />
-        <ChipGroup
+        <PickerField
+          label={t('common.type')}
           value={type}
           onChange={setType}
           options={[
@@ -87,7 +88,8 @@ export function ManageCurrenciesScreen() {
             { label: t('currency.custom'), value: 'custom' },
           ]}
         />
-        <ChipGroup
+        <PickerField
+          label={t('currency.favorite')}
           value={favorite}
           onChange={setFavorite}
           options={[
@@ -102,11 +104,12 @@ export function ManageCurrenciesScreen() {
       </Card>
 
       <Card style={{ gap: 10 }}>
-        <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '900' }}>{t('settings.baseCurrency')}</Text>
-        <ChipGroup
+        <PickerField
+          label={t('settings.baseCurrency')}
           value={settings.baseCurrency}
           onChange={setBaseCurrency}
           options={currencies.filter((currency) => currency.isActive).map((currency) => ({ label: currency.code, value: currency.code }))}
+          searchable
         />
       </Card>
 

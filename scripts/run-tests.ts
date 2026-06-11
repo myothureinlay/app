@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { calculateBudgetUsage, enrichBudgetWithUsage } from '../src/logic/budgets';
-import { dateRangeForPreset, isWithinDateRange } from '../src/logic/dateRanges';
+import { dateRangeForPreset, formatDateRangeLabel, isWithinDateRange } from '../src/logic/dateRanges';
 import { applyGoalContribution, calculateGoalProgress } from '../src/logic/goals';
 import { categoryTypeForTransaction, getWalletDeltas } from '../src/logic/ledger';
 import { calculateReportSummary, groupTransactionsByCategory } from '../src/logic/reports';
@@ -191,6 +191,7 @@ function run() {
   const juneRange = dateRangeForPreset('this_month', new Date('2026-06-15T12:00:00.000Z'));
   assert.equal(isWithinDateRange('2026-06-01T00:00:00.000Z', juneRange), true, 'this month includes first day');
   assert.equal(isWithinDateRange('2026-07-01T00:00:00.000Z', juneRange), false, 'this month excludes next month');
+  assert.equal(formatDateRangeLabel(juneRange, 'en-US'), 'Jun 1 – Jun 30, 2026', 'date range label is readable');
   const customRange = dateRangeForPreset('custom', new Date('2026-06-15T12:00:00.000Z'), {
     from: '2026-06-10',
     to: '2026-06-12',
@@ -224,4 +225,4 @@ function run() {
 }
 
 run();
-console.log('Ledger V3 tests passed');
+console.log('Ledger V4 tests passed');

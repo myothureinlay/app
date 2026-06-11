@@ -26,6 +26,7 @@ const defaultSettings: AppSettings = {
   iconStyle: 'line',
   googleAutoBackup: 'off',
   customTheme: defaultCustomTheme,
+  recentThemes: [],
 };
 
 interface PreferencesContextValue {
@@ -74,17 +75,22 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
     await AsyncStorage.setItem(storageKey, JSON.stringify(next));
   };
 
+  const rememberTheme = async (theme: ThemePreference) => {
+    const recentThemes = [theme, ...(settings.recentThemes ?? []).filter((item) => item !== theme)].slice(0, 4);
+    await updateSettings({ theme, recentThemes });
+  };
+
   const value = useMemo<PreferencesContextValue>(
     () => ({
       settings,
       theme: activeTheme,
       resolvedScheme,
       updateSettings,
-      setThemePreference: (theme) => updateSettings({ theme }),
+      setThemePreference: rememberTheme,
       setLanguage: (language) => updateSettings({ language }),
       setBaseCurrency: (baseCurrency) => updateSettings({ baseCurrency }),
     }),
-    [settings, resolvedScheme]
+    [settings, resolvedScheme, activeTheme]
   );
 
   return <AppPreferencesContext.Provider value={value}>{children}</AppPreferencesContext.Provider>;

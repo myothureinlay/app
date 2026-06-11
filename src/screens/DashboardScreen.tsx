@@ -1,19 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
 import { ChartCard, DonutChart, LineTrendChart } from '../components/ChartCard';
-import { ChipGroup } from '../components/ChipGroup';
 import { EmptyState } from '../components/EmptyState';
+import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
 import { StatCard } from '../components/StatCard';
 import { TransactionItem } from '../components/TransactionItem';
 import { WalletCard } from '../components/WalletCard';
-import { CURRENCIES } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
@@ -35,7 +34,7 @@ function isThisMonth(transaction: TransactionWithMeta) {
 export function DashboardScreen() {
   const navigation = useNavigation<any>();
   const { theme, settings, updateSettings } = useAppPreferences();
-  const { isReady, wallets, budgets, goals, transactions } = useFinance();
+  const { isReady, wallets, currencies, budgets, goals, transactions } = useFinance();
   const { t } = useI18n();
 
   const monthlyTransactions = transactions.filter(isThisMonth);
@@ -55,7 +54,7 @@ export function DashboardScreen() {
     goals.length === 0 ? 0 : goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length;
   const filterOptions = [
     { label: t('common.all'), value: 'all' as CurrencyFilter },
-    ...CURRENCIES.map((currency) => ({ label: currency, value: currency as CurrencyFilter })),
+    ...currencies.filter((currency) => currency.isActive).map((currency) => ({ label: currency.code, value: currency.code as CurrencyFilter })),
   ];
 
   if (!isReady) {
@@ -73,16 +72,16 @@ export function DashboardScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
-          borderRadius: theme.radius.md,
+          borderRadius: 28,
           padding: 22,
-          minHeight: 226,
+          minHeight: 238,
           justifyContent: 'space-between',
         }}
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 16 }}>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '900' }}>{t('dashboard.title')}</Text>
-            <Text style={{ color: '#FFFFFFCC', fontSize: 14, fontWeight: '700' }}>{t('dashboard.subtitle')}</Text>
+            <Text style={{ color: '#FFFFFFCC', fontSize: 13, fontWeight: '800' }}>{t('dashboard.todaySnapshot')}</Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 29, fontWeight: '900' }}>{t('dashboard.title')}</Text>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -90,7 +89,7 @@ export function DashboardScreen() {
             style={{
               width: 48,
               height: 48,
-              borderRadius: theme.radius.md,
+              borderRadius: 24,
               backgroundColor: '#FFFFFF22',
               alignItems: 'center',
               justifyContent: 'center',
@@ -121,11 +120,53 @@ export function DashboardScreen() {
         </View>
       </LinearGradient>
 
-      <ChipGroup
-        options={filterOptions}
-        value={settings.dashboardCurrencyFilter}
-        onChange={(dashboardCurrencyFilter) => updateSettings({ dashboardCurrencyFilter })}
-      />
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: -22, paddingHorizontal: 10 }}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('Add' as never)}
+          style={({ pressed }) => ({
+            flex: 1,
+            minHeight: 54,
+            borderRadius: 18,
+            backgroundColor: pressed ? theme.colors.surfaceElevated : theme.colors.surface,
+            borderColor: theme.colors.border,
+            borderWidth: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            gap: 8,
+          })}
+        >
+          <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
+          <Text style={{ color: theme.colors.text, fontWeight: '900' }}>{t('dashboard.quickAdd')}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('Reports' as never)}
+          style={({ pressed }) => ({
+            width: 58,
+            minHeight: 54,
+            borderRadius: 18,
+            backgroundColor: pressed ? theme.colors.surfaceElevated : theme.colors.surface,
+            borderColor: theme.colors.border,
+            borderWidth: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+          })}
+        >
+          <Ionicons name="analytics-outline" size={21} color={theme.colors.secondary} />
+        </Pressable>
+      </View>
+
+      <Card style={{ padding: 12 }}>
+        <PickerField
+          label={t('dashboard.viewing')}
+          options={filterOptions}
+          value={settings.dashboardCurrencyFilter}
+          onChange={(dashboardCurrencyFilter) => updateSettings({ dashboardCurrencyFilter })}
+          searchable
+        />
+      </Card>
 
       <View style={{ flexDirection: 'row', gap: 12 }}>
         <StatCard
@@ -194,9 +235,13 @@ export function DashboardScreen() {
       <ChartCard title={t('reports.walletBalances')}>
         <DonutChart data={distribution.map((row) => ({ ...row, value: Math.abs(row.total) }))} />
       </ChartCard>
-      {wallets.slice(0, 4).map((wallet) => (
-        <WalletCard key={wallet.id} wallet={wallet} />
-      ))}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+        {wallets.slice(0, 6).map((wallet) => (
+          <View key={wallet.id} style={{ width: 260 }}>
+            <WalletCard wallet={wallet} />
+          </View>
+        ))}
+      </ScrollView>
 
       <SectionHeader title={t('dashboard.quickActions')} />
       <Card style={{ flexDirection: 'row', gap: 10 }}>

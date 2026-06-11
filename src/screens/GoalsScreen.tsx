@@ -4,9 +4,9 @@ import { Alert, Text, View } from 'react-native';
 import { AmountInput } from '../components/AmountInput';
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
-import { ChipGroup } from '../components/ChipGroup';
 import { DatePickerField } from '../components/DatePickerField';
 import { EmptyState } from '../components/EmptyState';
+import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { TextField } from '../components/TextField';
@@ -60,7 +60,8 @@ export function GoalsScreen() {
       <ScreenHeader title={t('goal.title')} subtitle={t('goal.subtitle')} />
       <Card style={{ gap: 14 }}>
         <TextField label={t('goal.name')} value={name} onChangeText={setName} />
-        <ChipGroup
+        <PickerField
+          label={t('goal.type')}
           value={type}
           onChange={setType}
           options={[
@@ -74,7 +75,7 @@ export function GoalsScreen() {
         <AmountInput label={t('goal.targetAmount')} value={target} onChangeText={setTarget} />
         <AmountInput label={t('goal.currentAmount')} value={current} onChangeText={setCurrent} />
         <AmountInput label={`${t('goal.monthlyTarget')} (${t('common.optional')})`} value={monthly} onChangeText={setMonthly} />
-        <ChipGroup value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code }))} />
+        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code }))} searchable />
         <DatePickerField label={`${t('goal.deadline')} (${t('common.optional')})`} value={deadline} onChangeText={setDeadline} />
         <AppButton title={t('goal.add')} icon="flag-outline" onPress={submit} />
       </Card>
