@@ -5,17 +5,25 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
-import { CategoryChart } from '../components/CategoryChart';
+import { ChartCard, DonutChart, LineTrendChart } from '../components/ChartCard';
 import { ChipGroup } from '../components/ChipGroup';
+import { EmptyState } from '../components/EmptyState';
 import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
 import { StatCard } from '../components/StatCard';
 import { TransactionItem } from '../components/TransactionItem';
+import { WalletCard } from '../components/WalletCard';
 import { CURRENCIES } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
-import type { CurrencyFilter, SummaryTotals, TransactionWithMeta } from '../types';
+import {
+  calculateReportSummary,
+  monthlyIncomeExpense,
+  totalWalletValue,
+  walletDistribution,
+} from '../logic/reports';
+import type { CurrencyFilter, TransactionWithMeta } from '../types';
 import { endOfMonth, startOfMonth } from '../utils/dates';
 import { formatMoney } from '../utils/money';
 
@@ -24,39 +32,10 @@ function isThisMonth(transaction: TransactionWithMeta) {
   return date >= startOfMonth() && date <= endOfMonth();
 }
 
-function calculateTotals(
-  transactions: TransactionWithMeta[],
-  currencyFilter: CurrencyFilter,
-  baseCurrency: SummaryTotals['currencyLabel']
-): SummaryTotals {
-  const relevant = transactions.filter((transaction) =>
-    currencyFilter === 'all' ? transaction.baseCurrency === baseCurrency : transaction.currency === currencyFilter
-  );
-  const income = relevant
-    .filter((transaction) => transaction.type === 'income')
-    .reduce((sum, transaction) => sum + (currencyFilter === 'all' ? transaction.baseAmount : transaction.amount), 0);
-  const expenses = relevant
-    .filter((transaction) => transaction.type === 'expense')
-    .reduce((sum, transaction) => sum + (currencyFilter === 'all' ? transaction.baseAmount : transaction.amount), 0);
-  const hasMixedBaseCurrency =
-    currencyFilter === 'all' &&
-    transactions.some(
-      (transaction) => transaction.type !== 'transfer' && transaction.baseCurrency !== baseCurrency
-    );
-
-  return {
-    income,
-    expenses,
-    balance: income - expenses,
-    currencyLabel: currencyFilter === 'all' ? baseCurrency : currencyFilter,
-    hasMixedBaseCurrency,
-  };
-}
-
 export function DashboardScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { theme, settings, updateSettings } = useAppPreferences();
-  const { isReady, transactions } = useFinance();
+  const { isReady, wallets, transactions } = useFinance();
   const { t } = useI18n();
 
   const monthlyTransactions = transactions.filter(isThisMonth);
@@ -65,12 +44,11 @@ export function DashboardScreen() {
       ? true
       : transaction.currency === settings.dashboardCurrencyFilter
   );
-  const totals = calculateTotals(
-    monthlyTransactions,
-    settings.dashboardCurrencyFilter,
-    settings.baseCurrency
-  );
-  const recent = filteredTransactions.slice(0, 5);
+  const summary = calculateReportSummary(monthlyTransactions, settings.baseCurrency);
+  const recent = filteredTransactions.slice(0, 6);
+  const trend = monthlyIncomeExpense(transactions, settings.baseCurrency, 6);
+  const distribution = walletDistribution(wallets, settings.baseCurrency);
+  const netWorth = totalWalletValue(wallets, settings.baseCurrency) + summary.receivableMovement - summary.liabilityMovement;
   const filterOptions = [
     { label: t('common.all'), value: 'all' as CurrencyFilter },
     ...CURRENCIES.map((currency) => ({ label: currency, value: currency as CurrencyFilter })),
@@ -91,9 +69,9 @@ export function DashboardScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
-          borderRadius: 8,
+          borderRadius: theme.radius.md,
           padding: 20,
-          minHeight: 184,
+          minHeight: 202,
           justifyContent: 'space-between',
         }}
       >
@@ -108,19 +86,19 @@ export function DashboardScreen() {
             style={{
               width: 48,
               height: 48,
-              borderRadius: 8,
+              borderRadius: theme.radius.md,
               backgroundColor: '#FFFFFF22',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="add" size={26} color="#FFFFFF" />
+            <Ionicons name="add-outline" size={26} color="#FFFFFF" />
           </Pressable>
         </View>
         <View>
-          <Text style={{ color: '#FFFFFFBB', fontSize: 13, fontWeight: '700' }}>{t('dashboard.balance')}</Text>
+          <Text style={{ color: '#FFFFFFBB', fontSize: 13, fontWeight: '700' }}>{t('dashboard.netWorth')}</Text>
           <Text style={{ color: '#FFFFFF', fontSize: 34, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
-            {formatMoney(totals.balance, totals.currencyLabel as never)}
+            {formatMoney(netWorth, settings.baseCurrency)}
           </Text>
         </View>
       </LinearGradient>
@@ -134,42 +112,81 @@ export function DashboardScreen() {
       <View style={{ flexDirection: 'row', gap: 12 }}>
         <StatCard
           label={t('dashboard.monthlyIncome')}
-          value={totals.income}
-          currency={totals.currencyLabel}
-          icon="arrow-down"
+          value={summary.income}
+          currency={settings.baseCurrency}
+          icon="trending-up-outline"
           color={theme.colors.success}
         />
         <StatCard
           label={t('dashboard.monthlyExpenses')}
-          value={totals.expenses}
-          currency={totals.currencyLabel}
-          icon="arrow-up"
+          value={summary.expenses + summary.losses}
+          currency={settings.baseCurrency}
+          icon="trending-down-outline"
           color={theme.colors.danger}
         />
       </View>
 
-      {totals.hasMixedBaseCurrency ? (
-        <Card style={{ backgroundColor: `${theme.colors.warning}18`, borderColor: `${theme.colors.warning}66` }}>
-          <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '700' }}>
-            {t('dashboard.mixedBase')}
-          </Text>
-        </Card>
-      ) : null}
+      <StatCard
+        label={t('dashboard.netCashflow')}
+        value={summary.netCashflow}
+        currency={settings.baseCurrency}
+        icon="pulse-outline"
+        color={summary.netCashflow >= 0 ? theme.colors.success : theme.colors.danger}
+      />
 
-      <SectionHeader title={t('dashboard.categorySpending')} />
-      <CategoryChart transactions={filteredTransactions} />
+      <ChartCard title={t('dashboard.cashflowTrend')}>
+        <LineTrendChart data={trend} />
+      </ChartCard>
+
+      <SectionHeader title={t('dashboard.loanSnapshot')} />
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <StatCard
+          label={t('dashboard.receivable')}
+          value={summary.receivableMovement}
+          currency={settings.baseCurrency}
+          icon="arrow-down-circle-outline"
+          color={theme.colors.success}
+        />
+        <StatCard
+          label={t('dashboard.liability')}
+          value={summary.liabilityMovement}
+          currency={settings.baseCurrency}
+          icon="arrow-up-circle-outline"
+          color={theme.colors.warning}
+        />
+      </View>
+
+      <SectionHeader title={t('dashboard.walletBalances')} />
+      <ChartCard title={t('reports.walletBalances')}>
+        <DonutChart data={distribution.map((row) => ({ ...row, value: Math.abs(row.total) }))} />
+      </ChartCard>
+      {wallets.slice(0, 4).map((wallet) => (
+        <WalletCard key={wallet.id} wallet={wallet} />
+      ))}
+
+      <SectionHeader title={t('dashboard.quickActions')} />
+      <Card style={{ flexDirection: 'row', gap: 10 }}>
+        <AppButton title={t('dashboard.addIncome')} icon="trending-up-outline" onPress={() => navigation.navigate('Add' as never)} style={{ flex: 1 }} />
+        <AppButton title={t('dashboard.addExpense')} icon="trending-down-outline" variant="secondary" onPress={() => navigation.navigate('Add' as never)} style={{ flex: 1 }} />
+      </Card>
 
       <SectionHeader
         title={t('dashboard.recentTransactions')}
-        action={<AppButton title={t('dashboard.quickAdd')} icon="add" onPress={() => navigation.navigate('Add' as never)} />}
+        action={<AppButton title={t('dashboard.quickAdd')} icon="add-outline" onPress={() => navigation.navigate('Add' as never)} />}
       />
-      <Card>
-        {recent.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>{t('dashboard.empty')}</Text>
-        ) : (
-          recent.map((transaction) => <TransactionItem key={transaction.id} transaction={transaction} />)
-        )}
-      </Card>
+      {recent.length === 0 ? (
+        <EmptyState title={t('empty.title')} body={t('empty.transactions')} />
+      ) : (
+        <Card>
+          {recent.map((transaction) => (
+            <TransactionItem
+              key={transaction.id}
+              transaction={transaction}
+              onPress={() => navigation.navigate('TransactionDetail' as never, { transactionId: transaction.id } as never)}
+            />
+          ))}
+        </Card>
+      )}
     </Screen>
   );
 }

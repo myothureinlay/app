@@ -1,5 +1,6 @@
 import { setI18nLocale, t } from '.';
 import { useAppPreferences } from '../context/AppPreferencesContext';
+import { localeForLanguage } from './languages';
 
 export function useI18n() {
   const { settings } = useAppPreferences();
@@ -7,6 +8,6 @@ export function useI18n() {
 
   return {
     t,
-    locale: settings.language === 'th' ? 'th-TH' : settings.language === 'my' ? 'my-MM' : 'en-US',
+    locale: localeForLanguage(settings.language),
   };
 }

@@ -36,7 +36,7 @@ export function ManageWalletsScreen() {
       currency,
       balance: parseNumber(balance),
       color,
-      icon: currency === 'USDT' ? 'logo-bitcoin' : currency === 'USD' ? 'card' : 'wallet',
+      icon: currency === 'USDT' ? 'logo-bitcoin' : currency === 'USD' ? 'card-outline' : 'wallet-outline',
     });
     setName('');
     setBalance('');

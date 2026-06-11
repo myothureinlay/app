@@ -1,6 +1,6 @@
 {
   "name": "finance-tracker",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "index.ts",
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",
@@ -23,10 +23,13 @@
     "react-native": "0.85.3",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
+    "react-native-svg": "15.15.4",
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@types/node": "^25.9.3",
     "@types/react": "~19.2.2",
+    "tsx": "^4.22.4",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -35,7 +38,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "npm run typecheck",
+    "test": "tsx scripts/run-tests.ts",
     "build:android:preview": "eas build --platform android --profile preview"
   },
   "private": true

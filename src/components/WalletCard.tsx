@@ -25,7 +25,7 @@ export function WalletCard({ wallet }: WalletCardProps) {
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={wallet.icon as never} size={20} color={wallet.color} />
+        <Ionicons name={(wallet.icon || 'wallet-outline') as never} size={20} color={wallet.color} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '800' }}>{wallet.name}</Text>

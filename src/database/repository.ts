@@ -1,7 +1,19 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { defaultRatesToBase } from '../constants/currencies';
+import { getWalletDeltas, type LedgerTransactionInput } from '../logic/ledger';
+import {
+  calculateReportSummary,
+  groupExpensesByCurrency,
+  groupTransactionsByCategory,
+  monthlyIncomeExpense,
+  topIndividualExpenses,
+  walletDistribution,
+} from '../logic/reports';
 import type {
+  AppSettings,
   BackupPayload,
+  BaseCurrency,
   Category,
   CategoryType,
   CreateTransactionInput,
@@ -9,10 +21,12 @@ import type {
   Transaction,
   TransactionType,
   TransactionWithMeta,
+  UpdateTransactionInput,
   Wallet,
 } from '../types';
 import { createId } from '../utils/ids';
 import { initializeDatabase } from './client';
+import { seedDatabase } from './seed';
 
 type WalletRow = {
   id: string;
@@ -53,8 +67,14 @@ type TransactionRow = {
   date: string;
   note: string | null;
   exchange_rate: number;
-  base_currency: Transaction['baseCurrency'];
+  base_currency: BaseCurrency;
   base_amount: number;
+  counterparty: string | null;
+  related_transaction_id: string | null;
+  fee_amount: number;
+  fee_currency: CurrencyCode | null;
+  metadata: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -74,6 +94,7 @@ export interface TransactionFilters {
   currency?: CurrencyCode | 'all';
   categoryId?: string | 'all';
   walletId?: string | 'all';
+  includeDeleted?: boolean;
 }
 
 function mapWallet(row: WalletRow): Wallet {
@@ -122,6 +143,12 @@ function mapTransaction(row: TransactionRow): Transaction {
     exchangeRate: row.exchange_rate,
     baseCurrency: row.base_currency,
     baseAmount: row.base_amount,
+    counterparty: row.counterparty,
+    relatedTransactionId: row.related_transaction_id,
+    feeAmount: row.fee_amount ?? 0,
+    feeCurrency: row.fee_currency,
+    metadata: row.metadata,
+    deletedAt: row.deleted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -147,6 +174,33 @@ async function getDb() {
   return initializeDatabase();
 }
 
+function normalizeTransactionInput(input: CreateTransactionInput) {
+  return {
+    ...input,
+    note: input.note?.trim() || null,
+    counterparty: input.counterparty?.trim() || null,
+    relatedTransactionId: input.relatedTransactionId ?? null,
+    feeAmount: input.feeAmount ?? 0,
+    feeCurrency: input.feeCurrency ?? null,
+    metadata: input.metadata ?? null,
+  };
+}
+
+async function applyWalletMovement(
+  db: SQLiteDatabase,
+  input: LedgerTransactionInput,
+  multiplier = 1
+) {
+  const updatedAt = timestamp();
+  for (const delta of getWalletDeltas({ ...input, feeAmount: input.feeAmount ?? 0 })) {
+    await db.runAsync('UPDATE wallets SET balance = balance + ?, updated_at = ? WHERE id = ?', [
+      delta.amount * multiplier,
+      updatedAt,
+      delta.walletId,
+    ]);
+  }
+}
+
 export async function fetchWallets(includeArchived = false) {
   const db = await getDb();
   const rows = await db.getAllAsync<WalletRow>(
@@ -163,10 +217,13 @@ export async function fetchCategories(includeArchived = false) {
   return rows.map(mapCategory);
 }
 
-export async function fetchTransactions(filters: TransactionFilters = {}) {
-  const db = await getDb();
+function buildTransactionWhere(filters: TransactionFilters) {
   const where: string[] = [];
   const params: (string | number)[] = [];
+
+  if (!filters.includeDeleted) {
+    where.push('t.deleted_at IS NULL');
+  }
 
   if (filters.from) {
     where.push('t.date >= ?');
@@ -193,6 +250,13 @@ export async function fetchTransactions(filters: TransactionFilters = {}) {
     params.push(filters.walletId, filters.walletId);
   }
 
+  return { where, params };
+}
+
+export async function fetchTransactions(filters: TransactionFilters = {}) {
+  const db = await getDb();
+  const { where, params } = buildTransactionWhere(filters);
+
   const rows = await db.getAllAsync<TransactionMetaRow>(
     `SELECT
       t.*,
@@ -214,85 +278,161 @@ export async function fetchTransactions(filters: TransactionFilters = {}) {
   return rows.map(mapTransactionWithMeta);
 }
 
-export async function fetchRawTransactions() {
-  const db = await getDb();
-  const rows = await db.getAllAsync<TransactionRow>(
-    'SELECT * FROM transactions ORDER BY date DESC, created_at DESC'
-  );
-  return rows.map(mapTransaction);
+export async function fetchTransactionById(id: string, includeDeleted = true) {
+  const rows = await fetchTransactions({ includeDeleted, categoryId: 'all' });
+  return rows.find((transaction) => transaction.id === id) ?? null;
 }
 
-async function applyWalletMovement(db: SQLiteDatabase, input: CreateTransactionInput) {
-  const updatedAt = timestamp();
-
-  if (input.type === 'income') {
-    await db.runAsync('UPDATE wallets SET balance = balance + ?, updated_at = ? WHERE id = ?', [
-      input.amount,
-      updatedAt,
-      input.walletId,
-    ]);
-  }
-
-  if (input.type === 'expense') {
-    await db.runAsync('UPDATE wallets SET balance = balance - ?, updated_at = ? WHERE id = ?', [
-      input.amount,
-      updatedAt,
-      input.walletId,
-    ]);
-  }
-
-  if (input.type === 'transfer') {
-    await db.runAsync('UPDATE wallets SET balance = balance - ?, updated_at = ? WHERE id = ?', [
-      input.amount,
-      updatedAt,
-      input.walletId,
-    ]);
-
-    if (input.toWalletId) {
-      await db.runAsync('UPDATE wallets SET balance = balance + ?, updated_at = ? WHERE id = ?', [
-        input.toAmount ?? input.baseAmount,
-        updatedAt,
-        input.toWalletId,
-      ]);
-    }
-  }
+export async function fetchRawTransactions(includeDeleted = true) {
+  const db = await getDb();
+  const rows = await db.getAllAsync<TransactionRow>(
+    `SELECT * FROM transactions ${includeDeleted ? '' : 'WHERE deleted_at IS NULL'} ORDER BY date DESC, created_at DESC`
+  );
+  return rows.map(mapTransaction);
 }
 
 export async function createTransaction(input: CreateTransactionInput) {
   const db = await getDb();
   const id = createId('tx');
   const createdAt = timestamp();
+  const normalized = normalizeTransactionInput(input);
 
   await db.withTransactionAsync(async () => {
     await db.runAsync(
       `INSERT INTO transactions (
         id, type, amount, currency, wallet_id, to_wallet_id, to_amount, to_currency,
-        category_id, date, note, exchange_rate, base_currency, base_amount, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        category_id, date, note, exchange_rate, base_currency, base_amount,
+        counterparty, related_transaction_id, fee_amount, fee_currency, metadata, deleted_at,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        input.type,
-        input.amount,
-        input.currency,
-        input.walletId,
-        input.toWalletId ?? null,
-        input.toAmount ?? null,
-        input.toCurrency ?? null,
-        input.categoryId ?? null,
-        input.date,
-        input.note?.trim() || null,
-        input.exchangeRate,
-        input.baseCurrency,
-        input.baseAmount,
+        normalized.type,
+        normalized.amount,
+        normalized.currency,
+        normalized.walletId,
+        normalized.toWalletId ?? null,
+        normalized.toAmount ?? null,
+        normalized.toCurrency ?? null,
+        normalized.categoryId ?? null,
+        normalized.date,
+        normalized.note,
+        normalized.exchangeRate,
+        normalized.baseCurrency,
+        normalized.baseAmount,
+        normalized.counterparty,
+        normalized.relatedTransactionId,
+        normalized.feeAmount,
+        normalized.feeCurrency,
+        normalized.metadata,
+        null,
         createdAt,
         createdAt,
       ]
     );
 
-    await applyWalletMovement(db, input);
+    await applyWalletMovement(db, normalized);
   });
 
   return id;
+}
+
+export async function updateTransaction(input: UpdateTransactionInput) {
+  const db = await getDb();
+  const current = await fetchTransactionById(input.id, true);
+  if (!current) {
+    throw new Error('Transaction not found');
+  }
+
+  const normalized = normalizeTransactionInput(input);
+  const updatedAt = timestamp();
+
+  await db.withTransactionAsync(async () => {
+    if (!current.deletedAt) {
+      await applyWalletMovement(db, current, -1);
+    }
+
+    await db.runAsync(
+      `UPDATE transactions SET
+        type = ?,
+        amount = ?,
+        currency = ?,
+        wallet_id = ?,
+        to_wallet_id = ?,
+        to_amount = ?,
+        to_currency = ?,
+        category_id = ?,
+        date = ?,
+        note = ?,
+        exchange_rate = ?,
+        base_currency = ?,
+        base_amount = ?,
+        counterparty = ?,
+        related_transaction_id = ?,
+        fee_amount = ?,
+        fee_currency = ?,
+        metadata = ?,
+        updated_at = ?
+      WHERE id = ?`,
+      [
+        normalized.type,
+        normalized.amount,
+        normalized.currency,
+        normalized.walletId,
+        normalized.toWalletId ?? null,
+        normalized.toAmount ?? null,
+        normalized.toCurrency ?? null,
+        normalized.categoryId ?? null,
+        normalized.date,
+        normalized.note,
+        normalized.exchangeRate,
+        normalized.baseCurrency,
+        normalized.baseAmount,
+        normalized.counterparty,
+        normalized.relatedTransactionId,
+        normalized.feeAmount,
+        normalized.feeCurrency,
+        normalized.metadata,
+        updatedAt,
+        input.id,
+      ]
+    );
+
+    if (!current.deletedAt) {
+      await applyWalletMovement(db, normalized);
+    }
+  });
+}
+
+export async function deleteTransaction(id: string) {
+  const db = await getDb();
+  const current = await fetchTransactionById(id, true);
+  if (!current || current.deletedAt) return;
+  const deletedAt = timestamp();
+
+  await db.withTransactionAsync(async () => {
+    await applyWalletMovement(db, current, -1);
+    await db.runAsync('UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      deletedAt,
+      deletedAt,
+      id,
+    ]);
+  });
+}
+
+export async function restoreTransaction(id: string) {
+  const db = await getDb();
+  const current = await fetchTransactionById(id, true);
+  if (!current || !current.deletedAt) return;
+  const updatedAt = timestamp();
+
+  await db.withTransactionAsync(async () => {
+    await applyWalletMovement(db, current);
+    await db.runAsync('UPDATE transactions SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
+      updatedAt,
+      id,
+    ]);
+  });
 }
 
 export async function createWallet(input: Pick<Wallet, 'name' | 'currency' | 'balance' | 'color' | 'icon'>) {
@@ -336,24 +476,86 @@ export async function createCategory(input: Pick<Category, 'name' | 'type' | 'co
   );
 }
 
-export async function exportBackupPayload(settings: BackupPayload['settings']): Promise<BackupPayload> {
+export async function updateCategory(input: Pick<Category, 'id' | 'name' | 'type' | 'color' | 'icon'>) {
+  const db = await getDb();
+  const updatedAt = timestamp();
+  await db.runAsync(
+    `UPDATE categories SET name = ?, type = ?, color = ?, icon = ?, updated_at = ? WHERE id = ?`,
+    [input.name, input.type, input.color, input.icon, updatedAt, input.id]
+  );
+}
+
+export async function archiveCategory(id: string) {
+  const db = await getDb();
+  const updatedAt = timestamp();
+  await db.runAsync('UPDATE categories SET is_archived = 1, updated_at = ? WHERE id = ?', [updatedAt, id]);
+}
+
+export async function clearFinanceData() {
+  const db = await getDb();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM transactions');
+    await db.runAsync('DELETE FROM categories');
+    await db.runAsync('DELETE FROM wallets');
+    await db.runAsync("DELETE FROM app_settings WHERE key IN ('seeded_v1', 'seeded_v2')");
+  });
+  await seedDatabase(db);
+}
+
+export async function exportBackupPayload(settings: AppSettings): Promise<BackupPayload> {
   const [wallets, categories, transactions] = await Promise.all([
     fetchWallets(true),
     fetchCategories(true),
-    fetchRawTransactions(),
+    fetchRawTransactions(true),
   ]);
 
   return {
-    version: 1,
+    version: 2,
     exportedAt: timestamp(),
     settings,
     wallets,
     categories,
     transactions,
+    exchangeRates: defaultRatesToBase,
+    reportMetadata: {
+      includesSoftDeletedTransactions: true,
+    },
   };
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+export function validateBackupPayload(payload: unknown): asserts payload is BackupPayload {
+  if (!isObject(payload)) throw new Error('Backup must be an object');
+  if (payload.version !== 1 && payload.version !== 2) throw new Error('Unsupported backup version');
+  if (!Array.isArray(payload.wallets)) throw new Error('Backup wallets are missing');
+  if (!Array.isArray(payload.categories)) throw new Error('Backup categories are missing');
+  if (!Array.isArray(payload.transactions)) throw new Error('Backup transactions are missing');
+  if (!isObject(payload.settings)) throw new Error('Backup settings are missing');
+
+  for (const wallet of payload.wallets) {
+    if (!isObject(wallet) || typeof wallet.id !== 'string' || typeof wallet.name !== 'string') {
+      throw new Error('Backup contains an invalid wallet');
+    }
+  }
+
+  for (const category of payload.categories) {
+    if (!isObject(category) || typeof category.id !== 'string' || typeof category.name !== 'string') {
+      throw new Error('Backup contains an invalid category');
+    }
+  }
+
+  for (const transaction of payload.transactions) {
+    if (!isObject(transaction) || typeof transaction.id !== 'string' || typeof transaction.type !== 'string') {
+      throw new Error('Backup contains an invalid transaction');
+    }
+  }
+}
+
 export async function importBackupPayload(payload: BackupPayload) {
+  validateBackupPayload(payload);
   const db = await getDb();
 
   await db.withTransactionAsync(async () => {
@@ -405,8 +607,10 @@ export async function importBackupPayload(payload: BackupPayload) {
       await db.runAsync(
         `INSERT INTO transactions (
           id, type, amount, currency, wallet_id, to_wallet_id, to_amount, to_currency,
-          category_id, date, note, exchange_rate, base_currency, base_amount, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          category_id, date, note, exchange_rate, base_currency, base_amount,
+          counterparty, related_transaction_id, fee_amount, fee_currency, metadata, deleted_at,
+          created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           transaction.id,
           transaction.type,
@@ -422,6 +626,12 @@ export async function importBackupPayload(payload: BackupPayload) {
           transaction.exchangeRate,
           transaction.baseCurrency,
           transaction.baseAmount,
+          transaction.counterparty ?? null,
+          transaction.relatedTransactionId ?? null,
+          transaction.feeAmount ?? 0,
+          transaction.feeCurrency ?? null,
+          transaction.metadata ?? null,
+          transaction.deletedAt ?? null,
           transaction.createdAt,
           transaction.updatedAt,
         ]
@@ -430,6 +640,11 @@ export async function importBackupPayload(payload: BackupPayload) {
   });
 
   return payload.settings;
+}
+
+function escapeCsv(value: unknown) {
+  const raw = value == null ? '' : String(value);
+  return `"${raw.replace(/"/g, '""')}"`;
 }
 
 export function buildTransactionsCsv(transactions: TransactionWithMeta[]) {
@@ -444,16 +659,15 @@ export function buildTransactionsCsv(transactions: TransactionWithMeta[]) {
     'currency',
     'to_amount',
     'to_currency',
+    'fee_amount',
+    'fee_currency',
     'exchange_rate',
     'base_amount',
     'base_currency',
+    'counterparty',
+    'deleted_at',
     'note',
   ];
-
-  const escape = (value: unknown) => {
-    const raw = value == null ? '' : String(value);
-    return `"${raw.replace(/"/g, '""')}"`;
-  };
 
   const rows = transactions.map((transaction) =>
     [
@@ -467,12 +681,64 @@ export function buildTransactionsCsv(transactions: TransactionWithMeta[]) {
       transaction.currency,
       transaction.toAmount,
       transaction.toCurrency,
+      transaction.feeAmount,
+      transaction.feeCurrency,
       transaction.exchangeRate,
       transaction.baseAmount,
       transaction.baseCurrency,
+      transaction.counterparty,
+      transaction.deletedAt,
       transaction.note,
-    ].map(escape)
+    ].map(escapeCsv)
   );
 
-  return [headers.map(escape), ...rows].map((row) => row.join(',')).join('\n');
+  return [headers.map(escapeCsv), ...rows].map((row) => row.join(',')).join('\n');
+}
+
+export function buildReportsCsv(
+  transactions: TransactionWithMeta[],
+  wallets: Wallet[],
+  baseCurrency: BaseCurrency
+) {
+  const summary = calculateReportSummary(transactions, baseCurrency);
+  const monthly = monthlyIncomeExpense(transactions, baseCurrency, 12);
+  const expenses = groupTransactionsByCategory(transactions, baseCurrency, 'expense');
+  const income = groupTransactionsByCategory(transactions, baseCurrency, 'income');
+  const expenseCurrencies = groupExpensesByCurrency(transactions);
+  const distribution = walletDistribution(wallets, baseCurrency);
+  const topExpenses = topIndividualExpenses(transactions, baseCurrency, 10);
+
+  const sections: string[][][] = [
+    [
+      ['section', 'metric', 'value', 'currency'],
+      ['summary', 'income', summary.income, baseCurrency],
+      ['summary', 'expenses', summary.expenses, baseCurrency],
+      ['summary', 'net_cashflow', summary.netCashflow, baseCurrency],
+      ['summary', 'losses', summary.losses, baseCurrency],
+      ['summary', 'fees', summary.fees, baseCurrency],
+      ['summary', 'taxes', summary.taxes, baseCurrency],
+      ['summary', 'liability_movement', summary.liabilityMovement, baseCurrency],
+      ['summary', 'receivable_movement', summary.receivableMovement, baseCurrency],
+    ].map((row) => row.map(escapeCsv)),
+    [['month', 'income', 'expenses', 'cashflow'], ...monthly.map((row) => [row.key, row.income, row.expenses, row.cashflow])].map((row) =>
+      row.map(escapeCsv)
+    ),
+    [['expense_category', 'total'], ...expenses.map((row) => [row.label, row.total])].map((row) =>
+      row.map(escapeCsv)
+    ),
+    [['income_category', 'total'], ...income.map((row) => [row.label, row.total])].map((row) =>
+      row.map(escapeCsv)
+    ),
+    [['expense_currency', 'total'], ...expenseCurrencies.map((row) => [row.label, row.total])].map((row) =>
+      row.map(escapeCsv)
+    ),
+    [['wallet', 'estimated_value'], ...distribution.map((row) => [row.label, row.total])].map((row) =>
+      row.map(escapeCsv)
+    ),
+    [['top_expense', 'date', 'amount', 'subtitle'], ...topExpenses.map((row) => [row.title, row.date, row.amount, row.subtitle])].map((row) =>
+      row.map(escapeCsv)
+    ),
+  ];
+
+  return sections.map((section) => section.map((row) => row.join(',')).join('\n')).join('\n\n');
 }
