@@ -4,15 +4,17 @@ import { PropsWithChildren, createContext, useContext, useEffect, useMemo, useSt
 import { useColorScheme } from 'react-native';
 
 import { setI18nLocale } from '../i18n';
+import { supportedLanguages } from '../i18n/languages';
 import { themes, type AppTheme, type ColorSchemeName } from '../theme/colors';
+import type { ThemePreset } from '../types';
 import type { AppSettings, BaseCurrency, LanguageCode, ThemePreference } from '../types';
 
 const storageKey = '@personal-finance/settings';
 
-const supportedLanguages: LanguageCode[] = ['en', 'my', 'th'];
-
 const deviceLanguage = (() => {
   const code = Localization.getLocales()[0]?.languageCode as LanguageCode | undefined;
+  const languageTag = Localization.getLocales()[0]?.languageTag;
+  if (languageTag?.toLowerCase().startsWith('zh')) return 'zh-Hans';
   return code && supportedLanguages.includes(code) ? code : 'en';
 })();
 
@@ -21,6 +23,7 @@ const defaultSettings: AppSettings = {
   language: deviceLanguage,
   baseCurrency: 'USD',
   dashboardCurrencyFilter: 'all',
+  iconStyle: 'line',
 };
 
 interface PreferencesContextValue {
@@ -55,8 +58,9 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
     load().catch(() => setI18nLocale(defaultSettings.language));
   }, []);
 
-  const resolvedScheme: ColorSchemeName =
+  const resolvedTheme: ThemePreset =
     settings.theme === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : settings.theme;
+  const resolvedScheme: ColorSchemeName = themes[resolvedTheme].scheme;
 
   const updateSettings = async (patch: Partial<AppSettings>) => {
     const next = { ...settings, ...patch };
@@ -68,7 +72,7 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
   const value = useMemo<PreferencesContextValue>(
     () => ({
       settings,
-      theme: themes[resolvedScheme],
+      theme: themes[resolvedTheme],
       resolvedScheme,
       updateSettings,
       setThemePreference: (theme) => updateSettings({ theme }),

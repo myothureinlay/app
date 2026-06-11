@@ -7,10 +7,14 @@ import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useI18n } from '../i18n/useI18n';
 import { AddTransactionScreen } from '../screens/AddTransactionScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
+import { EditTransactionScreen } from '../screens/EditTransactionScreen';
+import { LanguagePickerScreen } from '../screens/LanguagePickerScreen';
 import { ManageCategoriesScreen } from '../screens/ManageCategoriesScreen';
 import { ManageWalletsScreen } from '../screens/ManageWalletsScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { ThemePickerScreen } from '../screens/ThemePickerScreen';
+import { TransactionDetailScreen } from '../screens/TransactionDetailScreen';
 import type { RootStackParamList, RootTabParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -40,12 +44,12 @@ function MainTabs() {
         tabBarIcon: ({ color, size }) => {
           const icon =
             route.name === 'Dashboard'
-              ? 'grid'
+              ? 'grid-outline'
               : route.name === 'Add'
-                ? 'add-circle'
+                ? 'add-circle-outline'
                 : route.name === 'Reports'
-                  ? 'bar-chart'
-                  : 'settings';
+                  ? 'bar-chart-outline'
+                  : 'settings-outline';
           return <Ionicons name={icon as never} size={size} color={color} />;
         },
       })}
@@ -97,6 +101,18 @@ export function AppNavigator() {
           component={ManageCategoriesScreen}
           options={{ title: t('nav.categories') }}
         />
+        <Stack.Screen
+          name="TransactionDetail"
+          component={TransactionDetailScreen}
+          options={{ title: t('nav.transactionDetail') }}
+        />
+        <Stack.Screen
+          name="EditTransaction"
+          component={EditTransactionScreen}
+          options={{ title: t('nav.editTransaction') }}
+        />
+        <Stack.Screen name="ThemePicker" component={ThemePickerScreen} options={{ title: t('nav.themes') }} />
+        <Stack.Screen name="LanguagePicker" component={LanguagePickerScreen} options={{ title: t('nav.languages') }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

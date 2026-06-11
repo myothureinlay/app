@@ -4,8 +4,9 @@ import type { LanguageCode } from '../types';
 import { en } from './locales/en';
 import { my } from './locales/my';
 import { th } from './locales/th';
+import { zhHans } from './locales/zh-Hans';
 
-export const translations = { en, my, th };
+export const translations = { en, my, th, 'zh-Hans': zhHans };
 
 export const i18n = new I18n(translations);
 i18n.defaultLocale = 'en';
