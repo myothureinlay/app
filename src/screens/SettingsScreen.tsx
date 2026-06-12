@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Image, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
@@ -9,11 +9,14 @@ import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SectionHeader } from '../components/SectionHeader';
+import { BUILD_INFO } from '../constants/build';
+import { getCurrencyBadge } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
-import type { BackupPayload, BaseCurrency } from '../types';
+import type { BackupPayload, BaseCurrency, IconStyle } from '../types';
 import { pickJsonFile, saveAndShareFile } from '../utils/files';
+import { buildExcelCompatibleReport, buildReportImageSvg, buildReportPdf } from '../utils/reportExports';
 
 function stamp() {
   return new Date().toISOString().replace(/[:.]/g, '-');
@@ -26,6 +29,13 @@ export function SettingsScreen() {
   const { t } = useI18n();
   const [confirmClear, setConfirmClear] = useState(false);
   const baseCurrencyOptions = currencies.filter((currency) => currency.isActive).map((currency) => currency.code);
+  const reportExportInput = () => ({
+    reportCsv: createReportsCsv(settings),
+    reportTitle: t('settings.exportReportTitle'),
+    dateRangeLabel: t('settings.allSavedData'),
+    generatedAt: new Date().toLocaleString(),
+    logoUri: Image.resolveAssetSource(require('../../assets/icon.png')).uri,
+  });
 
   const exportCsv = async () => {
     const uri = await saveAndShareFile(
@@ -43,6 +53,45 @@ export function SettingsScreen() {
       'text/csv'
     );
     Alert.alert(t('settings.exported'), uri);
+  };
+
+  const exportExcel = async () => {
+    try {
+      const uri = await saveAndShareFile(
+        `finance-report-${stamp()}.xls`,
+        buildExcelCompatibleReport(reportExportInput()),
+        'application/vnd.ms-excel'
+      );
+      Alert.alert(t('settings.exported'), `${uri}\n${t('settings.excelCompatibleNote')}`);
+    } catch {
+      Alert.alert(t('settings.exportFailed'));
+    }
+  };
+
+  const exportPdf = async () => {
+    try {
+      const uri = await saveAndShareFile(
+        `finance-report-${stamp()}.pdf`,
+        buildReportPdf(reportExportInput()),
+        'application/pdf'
+      );
+      Alert.alert(t('settings.exported'), uri);
+    } catch {
+      Alert.alert(t('settings.exportFailed'));
+    }
+  };
+
+  const exportImage = async () => {
+    try {
+      const uri = await saveAndShareFile(
+        `finance-report-image-${stamp()}.svg`,
+        buildReportImageSvg(reportExportInput()),
+        'image/svg+xml'
+      );
+      Alert.alert(t('settings.exported'), `${uri}\n${t('settings.imageExportNote')}`);
+    } catch {
+      Alert.alert(t('settings.exportFailed'));
+    }
   };
 
   const backupJson = async () => {
@@ -87,10 +136,16 @@ export function SettingsScreen() {
           variant="secondary"
           onPress={() => navigation.navigate('LanguagePicker' as never)}
         />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '800' }}>{t('settings.iconStyle')}</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '900' }}>{t('settings.lineIcons')}</Text>
-        </View>
+        <PickerField
+          label={t('settings.iconStyle')}
+          value={settings.iconStyle}
+          onChange={(iconStyle) => updateSettings({ iconStyle: iconStyle as IconStyle })}
+          options={[
+            { label: t('settings.lineIcons'), value: 'line', icon: 'ellipse-outline', color: theme.colors.primary },
+            { label: t('settings.filledIcons'), value: 'filled', icon: 'ellipse', color: theme.colors.secondary },
+          ]}
+          icon="sparkles-outline"
+        />
       </Card>
 
       <SectionHeader title={t('settings.baseCurrency')} />
@@ -99,7 +154,7 @@ export function SettingsScreen() {
           label={t('settings.baseCurrency')}
           value={settings.baseCurrency}
           onChange={(value) => setBaseCurrency(value as BaseCurrency)}
-          options={(baseCurrencyOptions.includes(settings.baseCurrency) ? baseCurrencyOptions : [settings.baseCurrency, ...baseCurrencyOptions]).map((currency) => ({ label: currency, value: currency, icon: 'cash-outline' }))}
+          options={(baseCurrencyOptions.includes(settings.baseCurrency) ? baseCurrencyOptions : [settings.baseCurrency, ...baseCurrencyOptions]).map((currency) => ({ label: currency, value: currency, icon: 'cash-outline', badge: getCurrencyBadge(currency) }))}
           icon="cash-outline"
           searchable
         />
@@ -149,6 +204,9 @@ export function SettingsScreen() {
       <Card style={{ gap: 10 }}>
         <AppButton title={t('settings.exportCsv')} icon="document-text-outline" variant="secondary" onPress={exportCsv} />
         <AppButton title={t('settings.exportReportsCsv')} icon="analytics-outline" variant="secondary" onPress={exportReports} />
+        <AppButton title={t('settings.exportExcel')} icon="grid-outline" variant="secondary" onPress={exportExcel} />
+        <AppButton title={t('settings.exportPdf')} icon="document-outline" variant="secondary" onPress={exportPdf} />
+        <AppButton title={t('settings.exportImage')} icon="image-outline" variant="secondary" onPress={exportImage} />
         <AppButton title={t('settings.backupJson')} icon="archive-outline" variant="secondary" onPress={backupJson} />
         <AppButton title={t('settings.importJson')} icon="cloud-upload-outline" variant="secondary" onPress={importJson} />
         <AppButton
@@ -181,6 +239,13 @@ export function SettingsScreen() {
           variant="secondary"
           onPress={() => navigation.navigate('About' as never)}
         />
+      </Card>
+
+      <Card style={{ gap: 6, backgroundColor: `${theme.colors.primary}12`, borderColor: `${theme.colors.primary}44` }}>
+        <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '900' }}>{BUILD_INFO.shortLabel}</Text>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          {t('about.version')}: {BUILD_INFO.appVersion} · {t('about.buildDate')}: {BUILD_INFO.buildDate}
+        </Text>
       </Card>
 
       <ConfirmDialog

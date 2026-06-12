@@ -40,11 +40,16 @@ export type ThemePreset =
 export type ThemePreference = ThemePreset | 'system' | 'custom';
 export type LanguageCode = 'en' | 'my' | 'th' | 'zh-Hans';
 export type CurrencyFilter = 'all' | CurrencyCode;
-export type IconStyle = 'line';
+export type IconStyle = 'line' | 'filled';
 
 export interface WidgetPreferences {
   order: string[];
   hidden: string[];
+}
+
+export interface NotificationPreferences {
+  readIds: string[];
+  hiddenIds: string[];
 }
 
 export interface AppSettings {
@@ -60,6 +65,7 @@ export interface AppSettings {
   recentThemes?: ThemePreference[];
   dashboardWidgets?: WidgetPreferences;
   reportWidgets?: WidgetPreferences;
+  notifications?: NotificationPreferences;
 }
 
 export interface CustomThemeSettings {

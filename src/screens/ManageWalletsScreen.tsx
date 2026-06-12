@@ -11,6 +11,7 @@ import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { TextField } from '../components/TextField';
 import { WalletCard } from '../components/WalletCard';
+import { getCurrencyBadge } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
@@ -87,7 +88,7 @@ export function ManageWalletsScreen() {
           label={t('common.currency')}
           value={currency}
           onChange={setCurrency}
-          options={currencyOptions.map((item) => ({ label: item, value: item, icon: 'cash-outline' }))}
+          options={currencyOptions.map((item) => ({ label: item, value: item, icon: 'cash-outline', badge: getCurrencyBadge(item) }))}
           icon="cash-outline"
           searchable
         />

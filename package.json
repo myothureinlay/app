@@ -1,6 +1,6 @@
 {
   "name": "finance-tracker",
-  "version": "4.0.0",
+  "version": "6.0.0",
   "main": "index.ts",
   "dependencies": {
     "@expo/metro-runtime": "~56.0.15",

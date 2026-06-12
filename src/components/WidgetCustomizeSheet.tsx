@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useI18n } from '../i18n/useI18n';
 import type { WidgetPreferences } from '../types';
+import { iconForStyle } from '../utils/icons';
 import { AppButton } from './AppButton';
 import { BottomSheet } from './BottomSheet';
 import { Card } from './Card';
@@ -54,7 +55,7 @@ function IconControl({
   disabled?: boolean;
   onPress: () => void;
 }) {
-  const { theme } = useAppPreferences();
+  const { theme, settings } = useAppPreferences();
 
   return (
     <Pressable
@@ -71,7 +72,7 @@ function IconControl({
         },
       ]}
     >
-      <Ionicons name={icon as never} size={18} color={theme.colors.text} />
+      <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={18} color={theme.colors.text} />
     </Pressable>
   );
 }
@@ -84,7 +85,7 @@ export function WidgetCustomizeSheet({
   onChange,
   onClose,
 }: WidgetCustomizeSheetProps) {
-  const { theme } = useAppPreferences();
+  const { theme, settings } = useAppPreferences();
   const { t } = useI18n();
   const order = normalizeWidgetOrder(widgets, preferences?.order);
   const hidden = new Set(preferences?.hidden ?? []);
@@ -148,7 +149,7 @@ export function WidgetCustomizeSheet({
             }}
           >
             <View style={[styles.widgetIcon, { backgroundColor: `${accent}18` }]}>
-              <Ionicons name={widget.icon as never} size={18} color={accent} />
+                <Ionicons name={iconForStyle(widget.icon, settings.iconStyle) as never} size={18} color={accent} />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '900' }} numberOfLines={1}>

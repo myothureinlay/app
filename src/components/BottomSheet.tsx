@@ -35,7 +35,7 @@ export function BottomSheet({ visible, title, onClose, children, footer }: Botto
               accessibilityRole="button"
               onPress={onClose}
               style={({ pressed }) => [
-              styles.closeButton,
+                styles.closeButton,
                 { backgroundColor: theme.colors.surfaceElevated, opacity: pressed ? 0.74 : 1 },
               ]}
             >
@@ -65,6 +65,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     paddingTop: 8,
     overflow: 'hidden',
+    elevation: 8,
   },
   handle: {
     alignSelf: 'center',
@@ -95,8 +96,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    padding: 16,
-    gap: 10,
+    padding: 14,
+    gap: 8,
     paddingBottom: 20,
   },
   footer: {

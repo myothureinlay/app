@@ -13,6 +13,7 @@ import { TextField } from '../components/TextField';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
+import { getCurrencyBadge } from '../constants/currencies';
 import type { BudgetPeriod, CurrencyCode } from '../types';
 import { formatMoney, parseNumber } from '../utils/money';
 
@@ -70,7 +71,7 @@ export function BudgetsScreen() {
           searchable
         />
         <AmountInput label={t('budget.limit')} value={limit} onChangeText={setLimit} />
-        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code, icon: 'cash-outline' }))} icon="cash-outline" searchable />
+        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code, icon: 'cash-outline', badge: getCurrencyBadge(code) }))} icon="cash-outline" searchable />
         <PickerField
           label={t('budget.period')}
           value={period}

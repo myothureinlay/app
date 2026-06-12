@@ -41,12 +41,44 @@ export const currencySymbols: Record<string, string> = defaultCurrencyDefinition
   {}
 );
 
+export const currencyBadges: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  CNY: 'CN¥',
+  THB: '฿',
+  MMK: 'Ks',
+  INR: '₹',
+  KRW: '₩',
+  BTC: '₿',
+  ETH: 'Ξ',
+  USDT: '₮',
+  USDC: 'USDC',
+  SGD: 'S$',
+  MYR: 'RM',
+  IDR: 'Rp',
+  VND: '₫',
+  PHP: '₱',
+  AUD: 'A$',
+  CAD: 'C$',
+  HKD: 'HK$',
+  TWD: 'NT$',
+  AED: 'د.إ',
+  LAK: '₭',
+  KHR: '៛',
+};
+
 export function getCurrencyDefinition(currency: CurrencyCode) {
   return defaultCurrencyDefinitions.find((item) => item.code === currency);
 }
 
 export function getCurrencySymbol(currency: CurrencyCode) {
   return getCurrencyDefinition(currency)?.symbol ?? currency;
+}
+
+export function getCurrencyBadge(currency: CurrencyCode) {
+  return currencyBadges[currency.toUpperCase()] ?? '¤';
 }
 
 export function getCurrencyDecimalPlaces(currency: CurrencyCode) {

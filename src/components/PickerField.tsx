@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAppPreferences } from '../context/AppPreferencesContext';
+import { iconForStyle } from '../utils/icons';
 import { BottomSheet } from './BottomSheet';
 
 export interface PickerOption<T extends string> {
@@ -11,6 +12,7 @@ export interface PickerOption<T extends string> {
   icon?: string;
   color?: string;
   detail?: string;
+  badge?: string;
 }
 
 interface PickerFieldProps<T extends string> {
@@ -34,7 +36,7 @@ export function PickerField<T extends string>({
   searchable,
   icon,
 }: PickerFieldProps<T>) {
-  const { theme } = useAppPreferences();
+  const { theme, settings } = useAppPreferences();
   const [visible, setVisible] = useState(false);
   const [query, setQuery] = useState('');
   const selected = options.find((option) => option.value === value);
@@ -59,15 +61,18 @@ export function PickerField<T extends string>({
           },
         ]}
       >
-        <View
-          style={[
-            styles.iconSlot,
-            {
-              backgroundColor: `${selected?.color ?? theme.colors.primary}18`,
-            },
-          ]}
-        >
-          <Ionicons name={(selected?.icon ?? fallbackIcon) as never} size={17} color={selected?.color ?? theme.colors.primary} />
+        <View style={[styles.iconSlot, { backgroundColor: `${selected?.color ?? theme.colors.primary}18` }]}>
+          {selected?.badge ? (
+            <Text style={[styles.badgeText, { color: selected.color ?? theme.colors.primary }]} numberOfLines={1} adjustsFontSizeToFit>
+              {selected.badge}
+            </Text>
+          ) : (
+            <Ionicons
+              name={iconForStyle(selected?.icon ?? fallbackIcon, settings.iconStyle) as never}
+              size={17}
+              color={selected?.color ?? theme.colors.primary}
+            />
+          )}
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '900' }} numberOfLines={1}>
@@ -124,7 +129,13 @@ export function PickerField<T extends string>({
               ]}
             >
               <View style={[styles.optionIcon, { backgroundColor: `${accent}18` }]}>
-                <Ionicons name={(option.icon ?? fallbackIcon) as never} size={17} color={accent} />
+                {option.badge ? (
+                  <Text style={[styles.badgeText, { color: accent }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {option.badge}
+                  </Text>
+                ) : (
+                  <Ionicons name={iconForStyle(option.icon ?? fallbackIcon, settings.iconStyle) as never} size={17} color={accent} />
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '900' }}>{option.label}</Text>
@@ -182,5 +193,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '900',
+    maxWidth: 28,
+    textAlign: 'center',
   },
 });

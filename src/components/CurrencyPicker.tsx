@@ -1,4 +1,4 @@
-import { CURRENCIES } from '../constants/currencies';
+import { CURRENCIES, getCurrencyBadge } from '../constants/currencies';
 import { useFinance } from '../context/FinanceContext';
 import type { CurrencyCode } from '../types';
 import { SelectField } from './SelectField';
@@ -19,7 +19,7 @@ export function CurrencyPicker({ label, value, onChange }: CurrencyPickerProps) 
       label={label}
       value={value}
       onChange={onChange}
-      options={options.map((currency) => ({ label: currency, value: currency, icon: 'cash-outline' }))}
+      options={options.map((currency) => ({ label: currency, value: currency, icon: 'cash-outline', badge: getCurrencyBadge(currency) }))}
       icon="cash-outline"
       searchable
     />
