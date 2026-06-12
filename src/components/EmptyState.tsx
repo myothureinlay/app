@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
 import { useAppPreferences } from '../context/AppPreferencesContext';
+import { iconForStyle } from '../utils/icons';
 import { AppButton } from './AppButton';
 import { Card } from './Card';
 
@@ -22,7 +23,7 @@ export function EmptyState({
   actionIcon = 'add-outline',
   onAction,
 }: EmptyStateProps) {
-  const { theme } = useAppPreferences();
+  const { theme, settings } = useAppPreferences();
 
   return (
     <Card style={{ alignItems: 'center', gap: 10, paddingVertical: 22, paddingHorizontal: 18 }}>
@@ -36,7 +37,7 @@ export function EmptyState({
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={icon as never} size={24} color={theme.colors.primary} />
+        <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={24} color={theme.colors.primary} />
       </View>
       <Text style={{ color: theme.colors.text, fontSize: 17, fontWeight: '900', textAlign: 'center' }}>{title}</Text>
       <Text style={{ color: theme.colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>{body}</Text>

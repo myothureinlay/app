@@ -22,13 +22,14 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { ThemePickerScreen } from '../screens/ThemePickerScreen';
 import { TransactionDetailScreen } from '../screens/TransactionDetailScreen';
 import { UserManualScreen } from '../screens/UserManualScreen';
+import { iconForStyle } from '../utils/icons';
 import type { RootStackParamList, RootTabParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
 function MainTabs() {
-  const { theme } = useAppPreferences();
+  const { theme, settings } = useAppPreferences();
   const { t } = useI18n();
 
   return (
@@ -40,9 +41,15 @@ function MainTabs() {
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
-          height: 76,
+          height: 72,
           paddingTop: 8,
-          paddingBottom: 12,
+          paddingBottom: 10,
+          marginHorizontal: 14,
+          marginBottom: 10,
+          borderRadius: theme.radius.md + 8,
+          borderTopWidth: 0,
+          borderWidth: 1,
+          elevation: theme.elevation.card,
         },
         tabBarLabelStyle: {
           fontWeight: '800',
@@ -57,7 +64,7 @@ function MainTabs() {
                 : route.name === 'Reports'
                   ? 'bar-chart-outline'
                   : 'settings-outline';
-          return <Ionicons name={icon as never} size={size} color={color} />;
+          return <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={size} color={color} />;
         },
       })}
     >

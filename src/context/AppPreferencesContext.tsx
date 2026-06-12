@@ -28,6 +28,7 @@ const defaultSettings: AppSettings = {
   recentThemes: [],
   dashboardWidgets: { order: [], hidden: [] },
   reportWidgets: { order: [], hidden: [] },
+  notifications: { readIds: [], hiddenIds: [] },
 };
 
 function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
@@ -41,6 +42,10 @@ function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
     reportWidgets: {
       ...(defaultSettings.reportWidgets ?? { order: [], hidden: [] }),
       ...settings.reportWidgets,
+    },
+    notifications: {
+      ...(defaultSettings.notifications ?? { readIds: [], hiddenIds: [] }),
+      ...settings.notifications,
     },
   };
 }

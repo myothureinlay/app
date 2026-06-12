@@ -16,13 +16,34 @@ export function Screen({ children, scroll = true, style, contentStyle }: ScreenP
   const body = scroll ? (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={[styles.content, contentStyle]}
+      contentContainerStyle={[
+        styles.content,
+        {
+          padding: theme.density === 'compact' ? 16 : 20,
+          paddingBottom: 120,
+          gap: theme.density === 'compact' ? 12 : 16,
+        },
+        contentStyle,
+      ]}
       keyboardShouldPersistTaps="handled"
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.content, styles.flex, contentStyle]}>{children}</View>
+    <View
+      style={[
+        styles.content,
+        styles.flex,
+        {
+          padding: theme.density === 'compact' ? 16 : 20,
+          paddingBottom: 120,
+          gap: theme.density === 'compact' ? 12 : 16,
+        },
+        contentStyle,
+      ]}
+    >
+      {children}
+    </View>
   );
 
   return (
@@ -45,8 +66,5 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 20,
-    paddingBottom: 120,
-    gap: 16,
   },
 });

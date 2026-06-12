@@ -4,6 +4,16 @@ export type ColorSchemeName = 'light' | 'dark';
 
 export interface AppTheme {
   scheme: ColorSchemeName;
+  cardStyle: 'flat' | 'soft' | 'glass';
+  buttonStyle: 'solid' | 'tonal';
+  badgeStyle: 'soft' | 'outline';
+  density: 'compact' | 'comfortable';
+  recommendedIconStyle: 'line' | 'filled';
+  chartPalette: string[];
+  elevation: {
+    card: number;
+    sheet: number;
+  };
   colors: {
     background: string;
     surface: string;
@@ -25,20 +35,33 @@ export interface AppTheme {
   radius: {
     sm: number;
     md: number;
+    lg: number;
   };
 }
 
 function makeTheme(
   scheme: ColorSchemeName,
-  colors: AppTheme['colors']
+  colors: AppTheme['colors'],
+  style: Partial<Pick<AppTheme, 'cardStyle' | 'buttonStyle' | 'badgeStyle' | 'density' | 'recommendedIconStyle' | 'chartPalette'>> = {}
 ): AppTheme {
   return {
     scheme,
+    cardStyle: style.cardStyle ?? (scheme === 'dark' ? 'glass' : 'soft'),
+    buttonStyle: style.buttonStyle ?? (scheme === 'dark' ? 'tonal' : 'solid'),
+    badgeStyle: style.badgeStyle ?? 'soft',
+    density: style.density ?? 'compact',
+    recommendedIconStyle: style.recommendedIconStyle ?? 'line',
+    chartPalette: style.chartPalette ?? [colors.primary, colors.success, colors.danger, colors.warning, colors.secondary, colors.accent],
+    elevation: {
+      card: scheme === 'dark' ? 1 : 3,
+      sheet: 8,
+    },
     colors,
     spacing: (value: number) => value * 8,
     radius: {
       sm: 6,
       md: 8,
+      lg: 14,
     },
   };
 }

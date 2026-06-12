@@ -22,6 +22,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { TransactionItem } from '../components/TransactionItem';
 import { WalletCard } from '../components/WalletCard';
 import { WidgetCustomizeSheet, visibleWidgets, type WidgetDescriptor } from '../components/WidgetCustomizeSheet';
+import { getCurrencyBadge } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
@@ -442,7 +443,7 @@ export function ReportsScreen() {
           label={t('common.currency')}
           value={currency}
           onChange={setCurrency}
-          options={[{ label: t('common.all'), value: 'all', icon: 'layers-outline' }, ...currencyOptions.map((item) => ({ label: item, value: item, icon: 'cash-outline' }))]}
+          options={[{ label: t('common.all'), value: 'all', icon: 'layers-outline' }, ...currencyOptions.map((item) => ({ label: item, value: item, icon: 'cash-outline', badge: getCurrencyBadge(item) }))]}
           icon="cash-outline"
           searchable
         />

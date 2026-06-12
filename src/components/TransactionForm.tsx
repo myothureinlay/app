@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 
-import { BASE_CURRENCIES, getRateToBase } from '../constants/currencies';
+import { BASE_CURRENCIES, getCurrencyBadge, getRateToBase } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
@@ -235,7 +235,7 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
             setBaseCurrencyState(value);
             setBaseCurrency(value);
           }}
-          options={baseCurrencyOptions.map((item) => ({ value: item, label: item, icon: 'cash-outline' }))}
+          options={baseCurrencyOptions.map((item) => ({ value: item, label: item, icon: 'cash-outline', badge: getCurrencyBadge(item) }))}
           icon="cash-outline"
           searchable
         />

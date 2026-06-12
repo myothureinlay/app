@@ -10,6 +10,7 @@ import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { TextField } from '../components/TextField';
+import { getCurrencyBadge } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
@@ -76,7 +77,7 @@ export function GoalsScreen() {
         <AmountInput label={t('goal.targetAmount')} value={target} onChangeText={setTarget} />
         <AmountInput label={t('goal.currentAmount')} value={current} onChangeText={setCurrent} />
         <AmountInput label={`${t('goal.monthlyTarget')} (${t('common.optional')})`} value={monthly} onChangeText={setMonthly} />
-        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code, icon: 'cash-outline' }))} icon="cash-outline" searchable />
+        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code, icon: 'cash-outline', badge: getCurrencyBadge(code) }))} icon="cash-outline" searchable />
         <DatePickerField label={`${t('goal.deadline')} (${t('common.optional')})`} value={deadline} onChangeText={setDeadline} />
         <AppButton title={t('goal.add')} icon="flag-outline" onPress={submit} />
       </Card>

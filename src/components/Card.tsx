@@ -15,9 +15,9 @@ export function Card({ children, style }: CardProps) {
       : ({
           shadowColor: theme.colors.shadow,
           shadowOffset: { width: 0, height: 12 },
-          shadowOpacity: 0.08,
+          shadowOpacity: theme.cardStyle === 'flat' ? 0.03 : 0.08,
           shadowRadius: 24,
-          elevation: 2,
+          elevation: theme.elevation.card,
         } as ViewStyle);
 
   return (
@@ -27,6 +27,8 @@ export function Card({ children, style }: CardProps) {
         {
           backgroundColor: theme.colors.surface,
           borderColor: theme.colors.border,
+          borderRadius: theme.radius.lg,
+          borderWidth: theme.cardStyle === 'flat' ? 0 : StyleSheet.hairlineWidth,
         },
         shadowStyle,
         style,
@@ -39,8 +41,6 @@ export function Card({ children, style }: CardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
+    padding: 14,
   },
 });

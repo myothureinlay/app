@@ -14,6 +14,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { TransactionItem } from '../components/TransactionItem';
 import { WalletCard } from '../components/WalletCard';
 import { WidgetCustomizeSheet, visibleWidgets, type WidgetDescriptor } from '../components/WidgetCustomizeSheet';
+import { getCurrencyBadge } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
@@ -61,33 +62,6 @@ function HeroMetric({ label, value }: { label: string; value: string }) {
         {value}
       </Text>
     </View>
-  );
-}
-
-function QuickAction({ icon, label, color, onPress }: { icon: string; label: string; color: string; onPress: () => void }) {
-  const { theme } = useAppPreferences();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        minHeight: 58,
-        borderRadius: 10,
-        backgroundColor: pressed ? theme.colors.surfaceElevated : theme.colors.surface,
-        borderColor: theme.colors.border,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 5,
-      })}
-    >
-      <Ionicons name={icon as never} size={20} color={color} />
-      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '900' }} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -154,7 +128,13 @@ export function DashboardScreen() {
     { label: t('common.all'), value: 'all' as CurrencyFilter, icon: 'layers-outline', color: theme.colors.primary },
     ...currencies
       .filter((currency) => currency.isActive)
-      .map((currency) => ({ label: currency.code, value: currency.code as CurrencyFilter, icon: 'cash-outline', color: theme.colors.success })),
+      .map((currency) => ({
+        label: currency.code,
+        value: currency.code as CurrencyFilter,
+        icon: 'cash-outline',
+        badge: getCurrencyBadge(currency.code),
+        color: theme.colors.success,
+      })),
   ];
   const dashboardWidgets = useMemo<WidgetDescriptor[]>(
     () => [
@@ -186,35 +166,84 @@ export function DashboardScreen() {
       case 'balanceSummary':
         return (
           <LinearGradient
-            colors={[theme.colors.primaryDark, theme.colors.primary, theme.colors.secondary]}
+            colors={[theme.colors.primaryDark, theme.colors.primary, theme.colors.accent]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={{ borderRadius: 18, padding: 18, gap: 16 }}
+            style={{ borderRadius: theme.radius.lg + 6, padding: 18, gap: 18, overflow: 'hidden' }}
           >
+            <View
+              style={{
+                position: 'absolute',
+                right: -42,
+                top: -42,
+                width: 150,
+                height: 150,
+                borderRadius: 75,
+                backgroundColor: '#FFFFFF18',
+              }}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                left: -58,
+                bottom: -70,
+                width: 190,
+                height: 190,
+                borderRadius: 95,
+                backgroundColor: '#00000010',
+              }}
+            />
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
               <View style={{ flex: 1, gap: 5 }}>
+                <View
+                  style={{
+                    alignSelf: 'flex-start',
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 999,
+                    backgroundColor: '#FFFFFF22',
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>{t('dashboard.v6Label')}</Text>
+                </View>
                 <Text style={{ color: '#FFFFFFC8', fontSize: 13, fontWeight: '800' }}>{t('dashboard.greeting')}</Text>
-                <Text style={{ color: '#FFFFFF', fontSize: 25, fontWeight: '900' }}>{t('dashboard.title')}</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 27, fontWeight: '900' }}>{t('dashboard.title')}</Text>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => navigation.navigate('Notifications' as never)}
-                style={({ pressed }) => ({
-                  width: 42,
-                  height: 42,
-                  borderRadius: 12,
-                  backgroundColor: pressed ? '#FFFFFF30' : '#FFFFFF20',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                })}
-              >
-                <Ionicons name="notifications-outline" size={21} color="#FFFFFF" />
-              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setCustomizeVisible(true)}
+                  style={({ pressed }) => ({
+                    width: 42,
+                    height: 42,
+                    borderRadius: 12,
+                    backgroundColor: pressed ? '#FFFFFF30' : '#FFFFFF20',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  })}
+                >
+                  <Ionicons name="options-outline" size={21} color="#FFFFFF" />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => navigation.navigate('Notifications' as never)}
+                  style={({ pressed }) => ({
+                    width: 42,
+                    height: 42,
+                    borderRadius: 12,
+                    backgroundColor: pressed ? '#FFFFFF30' : '#FFFFFF20',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  })}
+                >
+                  <Ionicons name="notifications-outline" size={21} color="#FFFFFF" />
+                </Pressable>
+              </View>
             </View>
 
             <View style={{ gap: 5 }}>
               <Text style={{ color: '#FFFFFFB8', fontSize: 12, fontWeight: '800' }}>{t('dashboard.netWorth')}</Text>
-              <Text style={{ color: '#FFFFFF', fontSize: 33, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
+              <Text style={{ color: '#FFFFFF', fontSize: 35, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
                 {formatMoney(netWorth, settings.baseCurrency)}
               </Text>
             </View>
@@ -404,34 +433,6 @@ export function DashboardScreen() {
 
   return (
     <Screen>
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-        <AppButton
-          title={t('widgets.customize')}
-          icon="options-outline"
-          variant="secondary"
-          onPress={() => setCustomizeVisible(true)}
-          style={{ minHeight: 42 }}
-        />
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <QuickAction icon="add-circle-outline" label={t('dashboard.quickAdd')} color={theme.colors.primary} onPress={() => navigation.navigate('Add' as never)} />
-        <QuickAction icon="bar-chart-outline" label={t('nav.reports')} color={theme.colors.accent} onPress={() => navigation.navigate('Reports' as never)} />
-        <QuickAction icon="wallet-outline" label={t('nav.wallets')} color={theme.colors.success} onPress={() => navigation.navigate('ManageWallets' as never)} />
-        <QuickAction icon="settings-outline" label={t('nav.settings')} color={theme.colors.warning} onPress={() => navigation.navigate('Settings' as never)} />
-      </View>
-
-      <Card style={{ padding: 12 }}>
-        <PickerField
-          label={t('dashboard.viewing')}
-          options={filterOptions}
-          value={settings.dashboardCurrencyFilter}
-          onChange={(dashboardCurrencyFilter) => updateSettings({ dashboardCurrencyFilter })}
-          icon="cash-outline"
-          searchable
-        />
-      </Card>
-
       {activeDashboardWidgets.length === 0 ? (
         <EmptyState
           title={t('widgets.allHiddenTitle')}
@@ -444,6 +445,17 @@ export function DashboardScreen() {
       ) : (
         activeDashboardWidgets.map((widget) => <View key={widget.id}>{renderDashboardWidget(widget.id as DashboardWidgetId)}</View>)
       )}
+
+      <Card style={{ padding: 12 }}>
+        <PickerField
+          label={t('dashboard.viewing')}
+          options={filterOptions}
+          value={settings.dashboardCurrencyFilter}
+          onChange={(dashboardCurrencyFilter) => updateSettings({ dashboardCurrencyFilter })}
+          icon="cash-outline"
+          searchable
+        />
+      </Card>
 
       <WidgetCustomizeSheet
         visible={customizeVisible}
