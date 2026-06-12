@@ -5,9 +5,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useI18n } from '../i18n/useI18n';
+import { AboutScreen } from '../screens/AboutScreen';
 import { AddTransactionScreen } from '../screens/AddTransactionScreen';
 import { BudgetsScreen } from '../screens/BudgetsScreen';
-import { CustomThemeBuilderScreen } from '../screens/CustomThemeBuilderScreen';
+import { CalendarScreen } from '../screens/CalendarScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { EditTransactionScreen } from '../screens/EditTransactionScreen';
 import { GoalsScreen } from '../screens/GoalsScreen';
@@ -16,6 +17,7 @@ import { LanguagePickerScreen } from '../screens/LanguagePickerScreen';
 import { ManageCategoriesScreen } from '../screens/ManageCategoriesScreen';
 import { ManageCurrenciesScreen } from '../screens/ManageCurrenciesScreen';
 import { ManageWalletsScreen } from '../screens/ManageWalletsScreen';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ThemePickerScreen } from '../screens/ThemePickerScreen';
@@ -52,6 +54,8 @@ function MainTabs() {
               ? 'grid-outline'
               : route.name === 'Add'
                 ? 'add-circle-outline'
+                : route.name === 'Calendar'
+                  ? 'calendar-clear-outline'
                 : route.name === 'Reports'
                   ? 'bar-chart-outline'
                   : 'settings-outline';
@@ -61,6 +65,7 @@ function MainTabs() {
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: t('nav.dashboard') }} />
       <Tab.Screen name="Add" component={AddTransactionScreen} options={{ title: t('nav.add') }} />
+      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ title: t('nav.calendar') }} />
       <Tab.Screen name="Reports" component={ReportsScreen} options={{ title: t('nav.reports') }} />
       <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: t('nav.settings') }} />
     </Tab.Navigator>
@@ -122,7 +127,8 @@ export function AppNavigator() {
         <Stack.Screen name="Budgets" component={BudgetsScreen} options={{ title: t('nav.budgets') }} />
         <Stack.Screen name="Goals" component={GoalsScreen} options={{ title: t('nav.goals') }} />
         <Stack.Screen name="GoogleBackup" component={GoogleBackupScreen} options={{ title: t('nav.googleBackup') }} />
-        <Stack.Screen name="CustomThemeBuilder" component={CustomThemeBuilderScreen} options={{ title: t('nav.customTheme') }} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: t('nav.notifications') }} />
+        <Stack.Screen name="About" component={AboutScreen} options={{ title: t('nav.about') }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -43,8 +43,8 @@ export function PickerField<T extends string>({
   }, [options, query]);
 
   return (
-    <View style={{ gap: 8 }}>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '800' }}>{label}</Text>
+    <View style={{ gap: 6 }}>
+      <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '800' }}>{label}</Text>
       <Pressable
         accessibilityRole="button"
         onPress={() => setVisible(true)}
@@ -71,7 +71,7 @@ export function PickerField<T extends string>({
           )}
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '900' }} numberOfLines={1}>
+          <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }} numberOfLines={1}>
             {selected?.label ?? placeholder ?? label}
           </Text>
           {selected?.detail ? (
@@ -148,18 +148,18 @@ export function PickerField<T extends string>({
 
 const styles = StyleSheet.create({
   field: {
-    minHeight: 56,
-    borderRadius: 14,
+    minHeight: 48,
+    borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
   iconSlot: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -169,8 +169,8 @@ const styles = StyleSheet.create({
     borderRadius: 7,
   },
   search: {
-    minHeight: 46,
-    borderRadius: 14,
+    minHeight: 42,
+    borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 12,
     flexDirection: 'row',
@@ -178,18 +178,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   option: {
-    minHeight: 58,
-    borderRadius: 16,
+    minHeight: 50,
+    borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 12,
+    padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   optionIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },

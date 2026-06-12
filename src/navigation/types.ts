@@ -10,12 +10,14 @@ export type RootStackParamList = {
   Budgets: undefined;
   Goals: undefined;
   GoogleBackup: undefined;
-  CustomThemeBuilder: undefined;
+  Notifications: undefined;
+  About: undefined;
 };
 
 export type RootTabParamList = {
   Dashboard: undefined;
   Add: undefined;
+  Calendar: undefined;
   Reports: undefined;
   Settings: undefined;
 };

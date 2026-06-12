@@ -5,7 +5,7 @@ import { useColorScheme } from 'react-native';
 
 import { setI18nLocale } from '../i18n';
 import { supportedLanguages } from '../i18n/languages';
-import { buildCustomTheme, defaultCustomTheme, themes, type AppTheme, type ColorSchemeName } from '../theme/colors';
+import { themes, type AppTheme, type ColorSchemeName } from '../theme/colors';
 import type { ThemePreset } from '../types';
 import type { AppSettings, BaseCurrency, LanguageCode, ThemePreference } from '../types';
 
@@ -25,7 +25,6 @@ const defaultSettings: AppSettings = {
   dashboardCurrencyFilter: 'all',
   iconStyle: 'line',
   googleAutoBackup: 'off',
-  customTheme: defaultCustomTheme,
   recentThemes: [],
 };
 
@@ -65,7 +64,7 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
     settings.theme === 'system' || settings.theme === 'custom'
       ? (systemScheme === 'dark' ? 'dark' : 'light')
       : settings.theme;
-  const activeTheme = settings.theme === 'custom' ? buildCustomTheme(settings.customTheme) : themes[resolvedTheme];
+  const activeTheme = themes[resolvedTheme];
   const resolvedScheme: ColorSchemeName = activeTheme.scheme;
 
   const updateSettings = async (patch: Partial<AppSettings>) => {
@@ -76,8 +75,9 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
   };
 
   const rememberTheme = async (theme: ThemePreference) => {
-    const recentThemes = [theme, ...(settings.recentThemes ?? []).filter((item) => item !== theme)].slice(0, 4);
-    await updateSettings({ theme, recentThemes });
+    const nextTheme = theme === 'custom' ? 'system' : theme;
+    const recentThemes = [nextTheme, ...(settings.recentThemes ?? []).filter((item) => item !== nextTheme && item !== 'custom')].slice(0, 4);
+    await updateSettings({ theme: nextTheme, recentThemes });
   };
 
   const value = useMemo<PreferencesContextValue>(

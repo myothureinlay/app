@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
-import { Card } from '../components/Card';
+import { BottomSheet } from '../components/BottomSheet';
 import { ChipGroup } from '../components/ChipGroup';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { TextField } from '../components/TextField';
 import { WalletCard } from '../components/WalletCard';
 import { useAppPreferences } from '../context/AppPreferencesContext';
@@ -26,7 +27,15 @@ export function ManageWalletsScreen() {
   const [balance, setBalance] = useState('');
   const [color, setColor] = useState(walletColors[0]);
   const [removeTarget, setRemoveTarget] = useState<Wallet | null>(null);
+  const [formVisible, setFormVisible] = useState(false);
   const currencyOptions = currencies.length > 0 ? currencies.filter((item) => item.isActive).map((item) => item.code) : ['USD', 'USDT', 'MMK', 'THB'];
+
+  const closeForm = () => {
+    setFormVisible(false);
+    setName('');
+    setBalance('');
+    setColor(walletColors[0]);
+  };
 
   const submit = async () => {
     if (!name.trim()) {
@@ -41,33 +50,46 @@ export function ManageWalletsScreen() {
       color,
       icon: currency === 'USDT' ? 'logo-bitcoin' : currency === 'USD' ? 'card-outline' : 'wallet-outline',
     });
-    setName('');
-    setBalance('');
+    closeForm();
   };
 
   return (
     <Screen>
-      <Card style={{ gap: 16 }}>
-        <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '900' }}>{t('manage.addWallet')}</Text>
-        <TextField label={t('manage.walletName')} value={name} onChangeText={setName} />
-        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((item) => ({ label: item, value: item }))} searchable />
-        <TextField label={t('common.balance')} value={balance} onChangeText={setBalance} keyboardType="decimal-pad" />
-        <ChipGroup
-          value={color}
-          onChange={setColor}
-          options={walletColors.map((item) => ({ label: ' ', value: item, color: item }))}
-        />
-        <AppButton title={t('common.save')} icon="checkmark" onPress={submit} />
-      </Card>
+      <ScreenHeader
+        title={t('nav.wallets')}
+        subtitle={t('manage.walletsSubtitle')}
+        action={<AppButton title="" icon="add-outline" onPress={() => setFormVisible(true)} style={{ width: 44, paddingHorizontal: 0 }} />}
+      />
 
       <View style={{ gap: 12 }}>
         {wallets.map((wallet) => (
           <View key={wallet.id} style={{ gap: 8 }}>
             <WalletCard wallet={wallet} />
-            <AppButton title={t('common.remove')} icon="trash-outline" variant="danger" onPress={() => setRemoveTarget(wallet)} />
+            <AppButton title={t('common.remove')} icon="trash-outline" variant="ghost" onPress={() => setRemoveTarget(wallet)} />
           </View>
         ))}
       </View>
+      <BottomSheet visible={formVisible} title={t('manage.addWallet')} onClose={closeForm}>
+        <TextField label={t('manage.walletName')} value={name} onChangeText={setName} />
+        <PickerField
+          label={t('common.currency')}
+          value={currency}
+          onChange={setCurrency}
+          options={currencyOptions.map((item) => ({ label: item, value: item }))}
+          searchable
+        />
+        <TextField label={t('common.balance')} value={balance} onChangeText={setBalance} keyboardType="decimal-pad" />
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '800' }}>{t('common.color')}</Text>
+        <ChipGroup
+          value={color}
+          onChange={setColor}
+          options={walletColors.map((item) => ({ label: ' ', value: item, color: item }))}
+        />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <AppButton title={t('common.save')} icon="checkmark" onPress={submit} style={{ flex: 1 }} />
+          <AppButton title={t('common.cancel')} variant="secondary" onPress={closeForm} style={{ flex: 1 }} />
+        </View>
+      </BottomSheet>
       <ConfirmDialog
         visible={Boolean(removeTarget)}
         title={t('manage.removeWallet')}

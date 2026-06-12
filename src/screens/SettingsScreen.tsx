@@ -87,12 +87,6 @@ export function SettingsScreen() {
           variant="secondary"
           onPress={() => navigation.navigate('LanguagePicker' as never)}
         />
-        <AppButton
-          title={t('settings.customThemeBuilder')}
-          icon="eyedrop-outline"
-          variant="secondary"
-          onPress={() => navigation.navigate('CustomThemeBuilder' as never)}
-        />
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '800' }}>{t('settings.iconStyle')}</Text>
           <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '900' }}>{t('settings.lineIcons')}</Text>
@@ -167,9 +161,19 @@ export function SettingsScreen() {
       </Card>
 
       <SectionHeader title={t('settings.about')} />
-      <Card style={{ gap: 8 }}>
-        <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }}>{t('settings.version')}</Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 20 }}>{t('settings.apkUntouched')}</Text>
+      <Card style={{ gap: 10 }}>
+        <AppButton
+          title={t('settings.notifications')}
+          icon="notifications-outline"
+          variant="secondary"
+          onPress={() => navigation.navigate('Notifications' as never)}
+        />
+        <AppButton
+          title={t('settings.aboutApp')}
+          icon="information-circle-outline"
+          variant="secondary"
+          onPress={() => navigation.navigate('About' as never)}
+        />
       </Card>
 
       <ConfirmDialog
