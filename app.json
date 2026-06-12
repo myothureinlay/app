@@ -11,6 +11,7 @@
     },
     "android": {
       "package": "com.personalfinancetracker.app",
+      "versionCode": 4,
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -18,22 +19,23 @@
       },
       "predictiveBackGestureEnabled": false
     },
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#30D13D"
-    },
-    "notification": {
-      "icon": "./assets/notification-icon.png",
-      "color": "#12D8A5"
-    },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-sqlite",
       "expo-localization",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#30D13D",
+          "imageWidth": 220
+        }
+      ]
     ],
     "extra": {
       "eas": {
