@@ -174,7 +174,14 @@ export function ManageCategoriesScreen() {
 
       <View style={{ gap: 10 }}>
         {categories.length === 0 ? (
-          <EmptyState title={t('empty.title')} body={t('empty.categories')} />
+          <EmptyState
+            title={t('empty.title')}
+            body={t('empty.categories')}
+            icon="pricetags-outline"
+            actionLabel={t('manage.addCategory')}
+            actionIcon="add-circle-outline"
+            onAction={openAdd}
+          />
         ) : (
           categories.map((category) => (
             <Pressable key={category.id} onPress={() => openEdit(category)}>
@@ -219,7 +226,8 @@ export function ManageCategoriesScreen() {
             setType(value);
             setIcon(iconByType[value]);
           }}
-          options={categoryTypes.map((item) => ({ label: t(`categoryTypes.${item}`), value: item }))}
+          options={categoryTypes.map((item) => ({ label: t(`categoryTypes.${item}`), value: item, icon: iconByType[item] }))}
+          icon="pricetag-outline"
         />
         <TextField label={t('manage.searchIcons')} value={iconSearch} onChangeText={setIconSearch} />
         <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '800' }}>{t('common.icon')}</Text>

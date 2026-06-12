@@ -20,6 +20,8 @@ export function CategoryPicker({ label, value, onChange, categories }: CategoryP
         icon: category.icon,
         color: category.color,
       }))}
+      icon="pricetag-outline"
+      searchable
     />
   );
 }

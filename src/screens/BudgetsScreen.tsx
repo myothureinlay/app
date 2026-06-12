@@ -65,21 +65,23 @@ export function BudgetsScreen() {
           label={t('common.category')}
           value={categoryId}
           onChange={setCategoryId}
-          options={[{ label: t('budget.allCategories'), value: 'all' }, ...categories.map((category) => ({ label: category.name, value: category.id, icon: category.icon, color: category.color }))]}
+          options={[{ label: t('budget.allCategories'), value: 'all', icon: 'pricetags-outline' }, ...categories.map((category) => ({ label: category.name, value: category.id, icon: category.icon, color: category.color }))]}
+          icon="pricetag-outline"
           searchable
         />
         <AmountInput label={t('budget.limit')} value={limit} onChangeText={setLimit} />
-        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code }))} searchable />
+        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code, icon: 'cash-outline' }))} icon="cash-outline" searchable />
         <PickerField
           label={t('budget.period')}
           value={period}
           onChange={setPeriod}
           options={[
-            { label: t('budget.weekly'), value: 'weekly' },
-            { label: t('budget.monthly'), value: 'monthly' },
-            { label: t('budget.yearly'), value: 'yearly' },
-            { label: t('budget.custom'), value: 'custom' },
+            { label: t('budget.weekly'), value: 'weekly', icon: 'calendar-outline' },
+            { label: t('budget.monthly'), value: 'monthly', icon: 'calendar-outline' },
+            { label: t('budget.yearly'), value: 'yearly', icon: 'calendar-outline' },
+            { label: t('budget.custom'), value: 'custom', icon: 'calendar-number-outline' },
           ]}
+          icon="calendar-outline"
         />
         <DatePickerField label={t('dateRange.startDate')} value={startDate} onChangeText={setStartDate} />
         <DatePickerField label={`${t('dateRange.endDate')} (${t('common.optional')})`} value={endDate} onChangeText={setEndDate} />

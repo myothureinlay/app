@@ -43,7 +43,6 @@ export const en = {
   nav: {
     dashboard: 'Dashboard',
     add: 'Add',
-    calendar: 'Calendar',
     reports: 'Reports',
     settings: 'Settings',
     wallets: 'Wallets',
@@ -57,6 +56,7 @@ export const en = {
     goals: 'Goals',
     googleBackup: 'Google Backup',
     notifications: 'Notifications',
+    userManual: 'User Manual',
     about: 'About',
   },
   dashboard: {
@@ -178,6 +178,24 @@ export const en = {
     exportReportsCsv: 'Export reports CSV',
     dateRange: 'Date range',
     resetFilters: 'Reset filters',
+    historyTables: 'History tables',
+  },
+  widgets: {
+    customize: 'Customize',
+    customizeDashboard: 'Customize dashboard',
+    customizeReports: 'Customize reports',
+    reset: 'Reset layout',
+    visible: 'Visible',
+    hidden: 'Hidden',
+    show: 'Show widget',
+    hide: 'Hide widget',
+    moveUp: 'Move widget up',
+    moveDown: 'Move widget down',
+    allHiddenTitle: 'All widgets are hidden',
+    allHiddenBody: 'Open customization and show the widgets you want to use.',
+    dashboard: {
+      balanceSummary: 'Balance summary',
+    },
   },
   dateRange: {
     today: 'Today',
@@ -230,7 +248,7 @@ export const en = {
     importJson: 'Import JSON backup',
     clearData: 'Clear data',
     clearDataConfirmTitle: 'Clear all finance data?',
-    clearDataConfirmBody: 'This removes wallets, categories, and transactions from this device, then reseeds defaults.',
+    clearDataConfirmBody: 'This removes wallets, categories, and transactions from this device, then reseeds safe defaults without sample finance data.',
     manageCategories: 'Manage categories',
     manageWallets: 'Manage wallets',
     manageExchangeRates: 'Manage exchange rates',
@@ -240,6 +258,7 @@ export const en = {
     googleBackup: 'Google Backup',
     themePicker: 'Theme picker',
     languagePicker: 'Language picker',
+    userManual: 'User Manual',
     notifications: 'Notifications',
     aboutApp: 'About this app',
     backupRestore: 'Backup and restore',
@@ -247,7 +266,7 @@ export const en = {
     imported: 'Backup imported',
     importInvalid: 'This backup file is not valid.',
     about: 'About',
-    version: 'Version 5 UI polish',
+    version: 'Version 5.1 UX refinement',
     apkUntouched: 'EAS Android APK preview build remains configured.',
   },
   manage: {
@@ -267,18 +286,6 @@ export const en = {
     removeWallet: 'Remove wallet',
     removeWalletBody: 'Remove this wallet from new entries?',
     defaultsSeeded: 'Default categories are seeded only when missing.',
-  },
-  calendar: {
-    title: 'Calendar',
-    subtitle: 'Review spending by day and category in a cleaner monthly view.',
-    spending: 'Spending',
-    categories: 'Categories',
-    monthSpending: 'Month spending',
-    categoryBreakdown: 'Category breakdown',
-    selectedDay: 'Selected day',
-    daySpending: 'Day spending',
-    entries: 'Entries',
-    emptyDay: 'No ledger entries were saved for this date.',
   },
   notifications: {
     title: 'Notifications',
@@ -316,8 +323,8 @@ export const en = {
     whatItDoes: 'What it does',
     featureLedger: 'Multi-currency ledger',
     featureLedgerBody: 'Track income, expenses, transfers, loans, fees, taxes, refunds, losses, and compensation events.',
-    featureReports: 'Reports and calendar',
-    featureReportsBody: 'Review cashflow, category spending, wallet balances, loans, trends, and daily calendar activity.',
+    featureReports: 'Reports and insights',
+    featureReportsBody: 'Review cashflow, category spending, wallet balances, loans, trends, and date-range activity.',
     featureThemes: 'Themes and language',
     featureThemesBody: 'Use built-in themes, base currency settings, and language options without custom color editing.',
     dataPrivacy: 'Data and privacy',
@@ -420,5 +427,67 @@ export const en = {
     transactions: 'Add your first ledger entry to see activity here.',
     reports: 'Reports appear after transactions are saved.',
     categories: 'Create a category to organize your ledger.',
+    wallets: 'Add wallets for cash, bank accounts, cards, or crypto balances before saving transactions.',
+    addFirstTransaction: 'Add first transaction',
+  },
+  manual: {
+    title: 'User Manual',
+    subtitle: 'A practical guide to setting up and using your offline ledger.',
+    gettingStarted: {
+      title: 'Getting started',
+      body: 'Start by checking your base currency in Settings, then review or add wallets for the accounts you actually use. Add your first income, expense, transfer, exchange, loan, or adjustment from the Add tab. Reports stay empty until real transactions are saved.',
+    },
+    wallets: {
+      title: 'Wallets',
+      body: 'Wallets represent places where money is held, such as cash, a bank account, a card, or a crypto balance. Use Manage wallets to add, remove, or review wallets. Removing a wallet hides it from new entries while existing history remains safe.',
+    },
+    incomeExpenses: {
+      title: 'Income and expenses',
+      body: 'Use income for earned or received money and expense for outgoing spending. Loans, transfers, and exchanges are separate transaction types so they do not incorrectly inflate income or expenses.',
+    },
+    categories: {
+      title: 'Categories',
+      body: 'Categories keep reports readable. Default categories are created only when missing, and you can add your own category names, icons, colors, and types from Manage categories.',
+    },
+    currencyExchange: {
+      title: 'Currency exchange',
+      body: 'Use exchange when money moves between wallets in different currencies. Enter the sent amount, received amount, destination wallet, exchange rate, and any fee. Exchanges are not counted as expenses.',
+    },
+    reports: {
+      title: 'Reports',
+      body: 'Reports use the selected date range and filters at the top of the Reports screen. Use quick ranges like Today, This month, This quarter, or Custom date range. You can customize report widgets with up/down controls and hide anything you do not need.',
+    },
+    budgets: {
+      title: 'Budgets',
+      body: 'Budgets track spending limits by category, currency, and period. Create a budget with a limit and alert threshold, then review progress from Budgets or the Dashboard budget widget.',
+    },
+    goals: {
+      title: 'Goals',
+      body: 'Goals track savings targets, emergency funds, debt payoff, or custom plans. Add contributions to update progress and use the Dashboard goals widget for a quick snapshot.',
+    },
+    backupRestore: {
+      title: 'Backup and restore',
+      body: 'Use CSV export for spreadsheets and JSON backup for a full restore file. A JSON backup includes wallets, categories, settings, currencies, budgets, goals, and transactions. Import only backup files you trust.',
+    },
+    themes: {
+      title: 'Themes',
+      body: 'Use Theme picker to choose Light, Dark, System, or a built-in color preset. V5.1 keeps built-in themes only to reduce setup mistakes and preserve APK build stability.',
+    },
+    language: {
+      title: 'Language',
+      body: 'Use Language picker to change the app language. If a translation is missing, the app falls back to English so screens remain readable.',
+    },
+    notifications: {
+      title: 'Notifications',
+      body: 'Notifications are in-app reminders for budgets, goals, backups, wallets, and recent activity. Push notifications are not enabled unless notification setup is added later.',
+    },
+    troubleshooting: {
+      title: 'Troubleshooting',
+      body: 'If totals look wrong, check the transaction type, wallet, amount, exchange rate, and date range filters first. For a fresh start, export a JSON backup before using Clear data.',
+    },
+    apkInstall: {
+      title: 'APK update/install notes',
+      body: 'The Android preview build remains an APK through the EAS preview profile. After pulling updates, rebuild with npm run build:android:preview or eas build --platform android --profile preview.',
+    },
   },
 };

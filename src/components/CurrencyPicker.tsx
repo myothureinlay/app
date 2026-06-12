@@ -19,7 +19,9 @@ export function CurrencyPicker({ label, value, onChange }: CurrencyPickerProps) 
       label={label}
       value={value}
       onChange={onChange}
-      options={options.map((currency) => ({ label: currency, value: currency }))}
+      options={options.map((currency) => ({ label: currency, value: currency, icon: 'cash-outline' }))}
+      icon="cash-outline"
+      searchable
     />
   );
 }

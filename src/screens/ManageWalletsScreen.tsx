@@ -5,6 +5,7 @@ import { AppButton } from '../components/AppButton';
 import { BottomSheet } from '../components/BottomSheet';
 import { ChipGroup } from '../components/ChipGroup';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { EmptyState } from '../components/EmptyState';
 import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -62,12 +63,23 @@ export function ManageWalletsScreen() {
       />
 
       <View style={{ gap: 12 }}>
-        {wallets.map((wallet) => (
-          <View key={wallet.id} style={{ gap: 8 }}>
-            <WalletCard wallet={wallet} />
-            <AppButton title={t('common.remove')} icon="trash-outline" variant="ghost" onPress={() => setRemoveTarget(wallet)} />
-          </View>
-        ))}
+        {wallets.length === 0 ? (
+          <EmptyState
+            title={t('empty.title')}
+            body={t('empty.wallets')}
+            icon="wallet-outline"
+            actionLabel={t('manage.addWallet')}
+            actionIcon="add-circle-outline"
+            onAction={() => setFormVisible(true)}
+          />
+        ) : (
+          wallets.map((wallet) => (
+            <View key={wallet.id} style={{ gap: 8 }}>
+              <WalletCard wallet={wallet} />
+              <AppButton title={t('common.remove')} icon="trash-outline" variant="ghost" onPress={() => setRemoveTarget(wallet)} />
+            </View>
+          ))
+        )}
       </View>
       <BottomSheet visible={formVisible} title={t('manage.addWallet')} onClose={closeForm}>
         <TextField label={t('manage.walletName')} value={name} onChangeText={setName} />
@@ -75,7 +87,8 @@ export function ManageWalletsScreen() {
           label={t('common.currency')}
           value={currency}
           onChange={setCurrency}
-          options={currencyOptions.map((item) => ({ label: item, value: item }))}
+          options={currencyOptions.map((item) => ({ label: item, value: item, icon: 'cash-outline' }))}
+          icon="cash-outline"
           searchable
         />
         <TextField label={t('common.balance')} value={balance} onChangeText={setBalance} keyboardType="decimal-pad" />

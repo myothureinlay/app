@@ -42,6 +42,11 @@ export type LanguageCode = 'en' | 'my' | 'th' | 'zh-Hans';
 export type CurrencyFilter = 'all' | CurrencyCode;
 export type IconStyle = 'line';
 
+export interface WidgetPreferences {
+  order: string[];
+  hidden: string[];
+}
+
 export interface AppSettings {
   theme: ThemePreference;
   language: LanguageCode;
@@ -53,6 +58,8 @@ export interface AppSettings {
   googleAutoBackup?: 'off' | 'daily' | 'weekly' | 'monthly';
   customTheme?: CustomThemeSettings;
   recentThemes?: ThemePreference[];
+  dashboardWidgets?: WidgetPreferences;
+  reportWidgets?: WidgetPreferences;
 }
 
 export interface CustomThemeSettings {

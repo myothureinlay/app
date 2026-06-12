@@ -4,12 +4,20 @@ A React Native app built with Expo, TypeScript, and SQLite. It stores your finan
 
 This guide is written for beginners on macOS. The normal Android APK build path uses Expo EAS Build in the cloud, so you do not need to install Android Studio just to create an APK.
 
+## Version 5.1 UX Refinement
+
+- Removes the dedicated bottom Calendar tab; date selection stays inside the Reports date-range modal.
+- Adds safe Dashboard and Reports widget customization with up/down controls and hide/show preferences stored locally.
+- Removes automatic sample finance transactions so new installs start with safe defaults and real empty states.
+- Adds a Settings User Manual with setup, ledger, reports, backup, theme, language, troubleshooting, and APK notes.
+- Tightens picker/filter spacing and adds consistent line icons for currency, category, wallet, and transaction type selectors.
+- Keeps the Expo/EAS Android preview APK setup unchanged.
+
 ## Version 4 UX Polish
 
 - Replaces many horizontal chip rows with native bottom-sheet pickers and searchable selectors.
 - Reports now use a compact date range control and a filters sheet for currency, category, wallet, and transaction type.
-- Custom theme editing now includes palette suggestions, swatches, color bars, live previews, contrast warning, and optional hex editing.
-- Theme picker is now a richer theme manager with preview cards, built-in themes, a custom theme card, and recently used themes.
+- Theme picker uses compact built-in theme previews and recently used themes.
 - Dashboard has a more native premium hero area, compact quick actions, a currency picker, and swipeable wallet cards.
 - Google Backup now shows honest setup-required states, connection failure messaging when OAuth is missing, local JSON backup export, and last backup display.
 - No new large dependencies were added for this V4 pass.
@@ -21,7 +29,7 @@ This guide is written for beginners on macOS. The normal Android APK build path 
 - Manage wallets and currencies, including additional fiat and crypto defaults plus custom currency definitions.
 - Reports with date presets, custom date ranges, charts, wallet distribution, loan/debt, tax/fee, interest, loss, compensation, and top expense views.
 - Budgets and goals for monthly planning, over-budget tracking, savings targets, emergency funds, and debt payoff targets.
-- Theme presets plus a custom theme builder, scalable language metadata, and English/Burmese/Thai/Chinese Simplified language options.
+- Theme presets, scalable language metadata, and English/Burmese/Thai/Chinese Simplified language options.
 - Full JSON backup/import and CSV exports. Google backup screens are scaffolded but require manual OAuth setup before sign-in can work.
 
 ## Before Upgrading From An Older APK
@@ -288,7 +296,7 @@ The actual Google sign-in and cloud write integration is intentionally not enabl
 
 Do not commit Google client secrets or private tokens to this repository.
 
-## How To Test V4 UX
+## How To Test V5.1 UX
 
 Reports date range:
 
@@ -306,13 +314,18 @@ Reports filters:
 4. Tap `Apply`.
 5. Use `Reset filters` to return to all data.
 
-Custom theme editor:
+Dashboard and Reports customization:
 
-1. Open Settings -> Custom theme builder.
-2. Try a quick palette.
-3. Select a color field, tap swatches or the color bar, and check the live preview.
-4. Open advanced colors if needed and adjust hex values manually.
-5. Tap `Save custom theme`.
+1. Open Dashboard and tap `Customize`.
+2. Move widgets up or down, hide a widget, then show it again.
+3. Open Reports and repeat the same flow for report widgets.
+4. Restart the app and confirm the widget order/visibility is preserved.
+
+User Manual:
+
+1. Open Settings.
+2. Tap `User Manual`.
+3. Expand each section and confirm the content is split into readable cards.
 
 ## Available Scripts
 

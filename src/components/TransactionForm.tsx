@@ -7,9 +7,11 @@ import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
 import {
   categoryTypeForTransaction,
+  reportColorByType,
   transactionNeedsDestination,
   transactionSupportsCounterparty,
   transactionSupportsFees,
+  transactionTypeIcons,
   transactionTypes,
 } from '../logic/ledger';
 import type { BaseCurrency, CreateTransactionInput, CurrencyCode, Transaction, TransactionType } from '../types';
@@ -114,6 +116,8 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
       transactionTypes.map((item) => ({
         label: t(`types.${item}`),
         value: item,
+        icon: transactionTypeIcons[item],
+        color: reportColorByType[item],
       })),
     [t]
   );
@@ -160,7 +164,7 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
 
   return (
     <View style={{ gap: 16 }}>
-      <SelectField label={t('transaction.type')} value={type} onChange={setType} options={typeOptions} />
+      <SelectField label={t('transaction.type')} value={type} onChange={setType} options={typeOptions} icon="swap-horizontal-outline" />
 
       {needsDestination ? (
         <Card style={{ backgroundColor: `${theme.colors.secondary}14`, borderColor: `${theme.colors.secondary}55` }}>
@@ -182,6 +186,7 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
           label={t('common.wallet')}
           value={walletId}
           onChange={setWalletId}
+          icon="wallet-outline"
           options={wallets.map((wallet) => ({
             value: wallet.id,
             label: wallet.name,
@@ -197,6 +202,7 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
               label={t('transaction.toWallet')}
               value={toWalletId}
               onChange={setToWalletId}
+              icon="wallet-outline"
               options={wallets
                 .filter((wallet) => wallet.id !== walletId)
                 .map((wallet) => ({
@@ -229,7 +235,9 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
             setBaseCurrencyState(value);
             setBaseCurrency(value);
           }}
-          options={baseCurrencyOptions.map((item) => ({ value: item, label: item }))}
+          options={baseCurrencyOptions.map((item) => ({ value: item, label: item, icon: 'cash-outline' }))}
+          icon="cash-outline"
+          searchable
         />
         <TextField label={t('transaction.exchangeRate')} value={exchangeRate} onChangeText={setExchangeRate} keyboardType="decimal-pad" />
         <TextField label={t('transaction.baseAmount')} value={String(Math.round(baseAmount * 100) / 100)} editable={false} />
