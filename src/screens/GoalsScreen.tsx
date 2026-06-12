@@ -65,17 +65,18 @@ export function GoalsScreen() {
           value={type}
           onChange={setType}
           options={[
-            { label: t('goal.target'), value: 'target_amount' },
-            { label: t('goal.monthly'), value: 'monthly_saving' },
-            { label: t('goal.emergency'), value: 'emergency_fund' },
-            { label: t('goal.debtPayoff'), value: 'debt_payoff' },
-            { label: t('goal.custom'), value: 'custom' },
+            { label: t('goal.target'), value: 'target_amount', icon: 'flag-outline' },
+            { label: t('goal.monthly'), value: 'monthly_saving', icon: 'calendar-outline' },
+            { label: t('goal.emergency'), value: 'emergency_fund', icon: 'shield-checkmark-outline' },
+            { label: t('goal.debtPayoff'), value: 'debt_payoff', icon: 'trending-down-outline' },
+            { label: t('goal.custom'), value: 'custom', icon: 'options-outline' },
           ]}
+          icon="flag-outline"
         />
         <AmountInput label={t('goal.targetAmount')} value={target} onChangeText={setTarget} />
         <AmountInput label={t('goal.currentAmount')} value={current} onChangeText={setCurrent} />
         <AmountInput label={`${t('goal.monthlyTarget')} (${t('common.optional')})`} value={monthly} onChangeText={setMonthly} />
-        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code }))} searchable />
+        <PickerField label={t('common.currency')} value={currency} onChange={setCurrency} options={currencyOptions.map((code) => ({ label: code, value: code, icon: 'cash-outline' }))} icon="cash-outline" searchable />
         <DatePickerField label={`${t('goal.deadline')} (${t('common.optional')})`} value={deadline} onChangeText={setDeadline} />
         <AppButton title={t('goal.add')} icon="flag-outline" onPress={submit} />
       </Card>

@@ -11,13 +11,13 @@ export type RootStackParamList = {
   Goals: undefined;
   GoogleBackup: undefined;
   Notifications: undefined;
+  UserManual: undefined;
   About: undefined;
 };
 
 export type RootTabParamList = {
   Dashboard: undefined;
   Add: undefined;
-  Calendar: undefined;
   Reports: undefined;
   Settings: undefined;
 };

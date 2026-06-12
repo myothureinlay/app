@@ -26,7 +26,24 @@ const defaultSettings: AppSettings = {
   iconStyle: 'line',
   googleAutoBackup: 'off',
   recentThemes: [],
+  dashboardWidgets: { order: [], hidden: [] },
+  reportWidgets: { order: [], hidden: [] },
 };
+
+function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
+  return {
+    ...defaultSettings,
+    ...settings,
+    dashboardWidgets: {
+      ...(defaultSettings.dashboardWidgets ?? { order: [], hidden: [] }),
+      ...settings.dashboardWidgets,
+    },
+    reportWidgets: {
+      ...(defaultSettings.reportWidgets ?? { order: [], hidden: [] }),
+      ...settings.reportWidgets,
+    },
+  };
+}
 
 interface PreferencesContextValue {
   settings: AppSettings;
@@ -52,7 +69,7 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      const next = { ...defaultSettings, ...JSON.parse(raw) } as AppSettings;
+      const next = normalizeSettings(JSON.parse(raw) as Partial<AppSettings>);
       setSettings(next);
       setI18nLocale(next.language);
     }
@@ -68,7 +85,7 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
   const resolvedScheme: ColorSchemeName = activeTheme.scheme;
 
   const updateSettings = async (patch: Partial<AppSettings>) => {
-    const next = { ...settings, ...patch };
+    const next = normalizeSettings({ ...settings, ...patch });
     setSettings(next);
     setI18nLocale(next.language);
     await AsyncStorage.setItem(storageKey, JSON.stringify(next));

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -20,11 +21,12 @@ import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
 import { TransactionItem } from '../components/TransactionItem';
 import { WalletCard } from '../components/WalletCard';
+import { WidgetCustomizeSheet, visibleWidgets, type WidgetDescriptor } from '../components/WidgetCustomizeSheet';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
 import { dateRangeForPreset, formatDateRangeLabel, isWithinDateRange, type DateRangePreset } from '../logic/dateRanges';
-import { transactionTypes } from '../logic/ledger';
+import { reportColorByType, transactionTypeIcons, transactionTypes } from '../logic/ledger';
 import {
   calculateReportSummary,
   groupExpensesByCurrency,
@@ -39,9 +41,26 @@ import { formatMoney } from '../utils/money';
 
 type RangeMode = DateRangePreset;
 
+const reportWidgetIds = [
+  'monthlySummary',
+  'incomeVsExpense',
+  'cashflowTrend',
+  'categoryBreakdown',
+  'walletDistribution',
+  'lossSummary',
+  'loanDebt',
+  'interest',
+  'compensation',
+  'taxFees',
+  'history',
+  'transactions',
+] as const;
+
+type ReportWidgetId = (typeof reportWidgetIds)[number];
+
 export function ReportsScreen() {
   const navigation = useNavigation<any>();
-  const { theme, settings } = useAppPreferences();
+  const { theme, settings, updateSettings } = useAppPreferences();
   const { wallets, categories, currencies, transactions } = useFinance();
   const { t, locale } = useI18n();
   const [rangeMode, setRangeMode] = useState<RangeMode>('this_month');
@@ -53,8 +72,27 @@ export function ReportsScreen() {
   const [typeFilter, setTypeFilter] = useState<'all' | TransactionType>('all');
   const [dateSheetVisible, setDateSheetVisible] = useState(false);
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const [customizeVisible, setCustomizeVisible] = useState(false);
   const currencyOptions = currencies.length > 0 ? currencies.filter((item) => item.isActive).map((item) => item.code) : ['USD'];
   const activeFilterCount = [currency !== 'all', categoryId !== 'all', walletId !== 'all', typeFilter !== 'all'].filter(Boolean).length;
+  const reportWidgets = useMemo<WidgetDescriptor[]>(
+    () => [
+      { id: 'monthlySummary', title: t('reports.monthlySummary'), icon: 'calendar-outline', color: theme.colors.primary },
+      { id: 'incomeVsExpense', title: t('reports.incomeVsExpense'), icon: 'bar-chart-outline', color: theme.colors.success },
+      { id: 'cashflowTrend', title: t('reports.monthlyCashflowTrend'), icon: 'analytics-outline', color: theme.colors.accent },
+      { id: 'categoryBreakdown', title: t('reports.expenseByCategory'), icon: 'pie-chart-outline', color: theme.colors.danger },
+      { id: 'walletDistribution', title: t('reports.walletBalances'), icon: 'wallet-outline', color: theme.colors.success },
+      { id: 'lossSummary', title: t('reports.lossSummary'), icon: 'alert-circle-outline', color: theme.colors.danger },
+      { id: 'loanDebt', title: t('reports.loanDebtSummary'), icon: 'swap-vertical-outline', color: theme.colors.warning },
+      { id: 'interest', title: t('reports.interestSummary'), icon: 'sparkles-outline', color: theme.colors.success },
+      { id: 'compensation', title: t('reports.compensationSummary'), icon: 'medkit-outline', color: theme.colors.accent },
+      { id: 'taxFees', title: t('reports.taxFeeSummary'), icon: 'receipt-outline', color: theme.colors.warning },
+      { id: 'history', title: t('reports.historyTables'), icon: 'list-outline', color: theme.colors.primary },
+      { id: 'transactions', title: t('transaction.activeOnly'), icon: 'receipt-outline', color: theme.colors.primary },
+    ],
+    [t, theme]
+  );
+  const activeReportWidgets = visibleWidgets(reportWidgets, settings.reportWidgets);
 
   const activeRange = useMemo(
     () =>
@@ -112,9 +150,184 @@ export function ReportsScreen() {
     { label: t('reports.customRange'), value: 'custom' as RangeMode },
   ];
 
+  const renderReportWidget = (id: ReportWidgetId) => {
+    switch (id) {
+      case 'monthlySummary':
+        return (
+          <>
+            <SectionHeader title={t('reports.monthlySummary')} />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <ReportCard label={t('common.income')} value={summary.income} currency={settings.baseCurrency} icon="trending-up-outline" color={theme.colors.success} />
+              <ReportCard label={t('common.expense')} value={summary.expenses} currency={settings.baseCurrency} icon="trending-down-outline" color={theme.colors.danger} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <ReportCard label={t('reports.lossSummary')} value={summary.losses} currency={settings.baseCurrency} icon="alert-circle-outline" color={theme.colors.danger} />
+              <ReportCard label={t('dashboard.netCashflow')} value={summary.netCashflow} currency={settings.baseCurrency} icon="pulse-outline" color={summary.netCashflow >= 0 ? theme.colors.success : theme.colors.danger} />
+            </View>
+          </>
+        );
+      case 'incomeVsExpense':
+        return (
+          <ChartCard title={t('reports.incomeVsExpense')}>
+            <MonthlyBarChart data={trend} />
+          </ChartCard>
+        );
+      case 'cashflowTrend':
+        return (
+          <ChartCard title={t('reports.monthlyCashflowTrend')}>
+            <LineTrendChart data={trend} />
+          </ChartCard>
+        );
+      case 'categoryBreakdown':
+        return (
+          <>
+            <ChartCard title={t('reports.expenseByCategory')}>
+              {expenseByCategory.length === 0 ? (
+                <EmptyState
+                  title={t('empty.title')}
+                  body={t('empty.reports')}
+                  icon="pie-chart-outline"
+                  actionLabel={t('empty.addFirstTransaction')}
+                  actionIcon="add-circle-outline"
+                  onAction={() => navigation.navigate('Add' as never)}
+                />
+              ) : (
+                <DonutChart data={expenseByCategory.map((row) => ({ ...row, value: row.total }))} />
+              )}
+            </ChartCard>
+            <ChartCard title={t('reports.topExpenseCategories')}>
+              <HorizontalBarChart data={expenseByCategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
+            </ChartCard>
+            <ChartCard title={t('reports.incomeByCategory')}>
+              <HorizontalBarChart data={incomeByCategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
+            </ChartCard>
+            <ChartCard title={t('reports.expenseByCurrency')}>
+              <HorizontalBarChart data={expenseByCurrency.map((row) => ({ ...row, value: row.total }))} currency={currency === 'all' ? settings.baseCurrency : currency} />
+            </ChartCard>
+          </>
+        );
+      case 'walletDistribution':
+        return (
+          <>
+            <ChartCard title={t('reports.walletBalances')}>
+              {wallets.length === 0 ? (
+                <EmptyState
+                  title={t('empty.title')}
+                  body={t('empty.wallets')}
+                  icon="wallet-outline"
+                  actionLabel={t('manage.addWallet')}
+                  actionIcon="add-circle-outline"
+                  onAction={() => navigation.navigate('ManageWallets' as never)}
+                />
+              ) : (
+                <DonutChart data={walletRows.map((row) => ({ ...row, value: Math.abs(row.total) }))} />
+              )}
+            </ChartCard>
+            {wallets.map((wallet) => (
+              <WalletCard key={wallet.id} wallet={wallet} />
+            ))}
+          </>
+        );
+      case 'lossSummary':
+        return (
+          <>
+            <SectionHeader title={t('reports.lossSummary')} />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <ReportCard label={t('types.loss')} value={summary.losses} currency={settings.baseCurrency} icon="alert-circle-outline" color={theme.colors.danger} />
+            </View>
+          </>
+        );
+      case 'loanDebt':
+        return (
+          <>
+            <SectionHeader title={t('reports.loanDebtSummary')} />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <ReportCard label={t('dashboard.liability')} value={summary.liabilityMovement} currency={settings.baseCurrency} icon="arrow-up-circle-outline" color={theme.colors.warning} />
+              <ReportCard label={t('dashboard.receivable')} value={summary.receivableMovement} currency={settings.baseCurrency} icon="arrow-down-circle-outline" color={theme.colors.success} />
+            </View>
+          </>
+        );
+      case 'interest':
+        return (
+          <>
+            <SectionHeader title={t('reports.interestSummary')} />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <ReportCard label={t('types.interest_income')} value={summary.interestIncome} currency={settings.baseCurrency} icon="sparkles-outline" color={theme.colors.success} />
+              <ReportCard label={t('types.interest_expense')} value={summary.interestExpense} currency={settings.baseCurrency} icon="time-outline" color={theme.colors.warning} />
+            </View>
+          </>
+        );
+      case 'compensation':
+        return (
+          <>
+            <SectionHeader title={t('reports.compensationSummary')} />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <ReportCard label={t('types.compensation_received')} value={summary.compensationReceived} currency={settings.baseCurrency} icon="medkit-outline" color={theme.colors.success} />
+              <ReportCard label={t('types.compensation_paid')} value={summary.compensationPaid} currency={settings.baseCurrency} icon="shield-outline" color={theme.colors.danger} />
+            </View>
+          </>
+        );
+      case 'taxFees':
+        return (
+          <>
+            <SectionHeader title={t('reports.taxFeeSummary')} />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <ReportCard label={t('types.tax')} value={summary.taxes} currency={settings.baseCurrency} icon="document-text-outline" color={theme.colors.warning} />
+              <ReportCard label={t('types.fee')} value={summary.fees} currency={settings.baseCurrency} icon="receipt-outline" color={theme.colors.danger} />
+            </View>
+          </>
+        );
+      case 'history':
+        return (
+          <>
+            <HistorySection title={t('reports.topIndividualExpenses')} rows={topExpenses} currency={settings.baseCurrency} />
+            <HistorySection title={t('reports.exchangeHistory')} rows={exchangeHistory} currency={settings.baseCurrency} />
+            <HistorySection title={t('reports.loanDebtHistory')} rows={loanHistory} currency={settings.baseCurrency} />
+          </>
+        );
+      case 'transactions':
+        return (
+          <>
+            <SectionHeader title={t('transaction.activeOnly')} />
+            {filtered.length === 0 ? (
+              <EmptyState
+                title={t('empty.title')}
+                body={t('empty.reports')}
+                icon="receipt-outline"
+                actionLabel={t('empty.addFirstTransaction')}
+                actionIcon="add-circle-outline"
+                onAction={() => navigation.navigate('Add' as never)}
+              />
+            ) : (
+              filtered.slice(0, 12).map((transaction) => (
+                <TransactionItem
+                  key={transaction.id}
+                  transaction={transaction}
+                  onPress={() => navigation.navigate('TransactionDetail' as never, { transactionId: transaction.id } as never)}
+                />
+              ))
+            )}
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <Screen>
-      <SectionHeader title={t('reports.title')} />
+      <SectionHeader
+        title={t('reports.title')}
+        action={
+          <AppButton
+            title={t('widgets.customize')}
+            icon="options-outline"
+            variant="secondary"
+            onPress={() => setCustomizeVisible(true)}
+            style={{ minHeight: 42 }}
+          />
+        }
+      />
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Pressable
@@ -122,19 +335,25 @@ export function ReportsScreen() {
           onPress={() => setDateSheetVisible(true)}
           style={({ pressed }) => ({
             flex: 1,
-            minHeight: 62,
+            minHeight: 56,
             borderRadius: theme.radius.md,
             borderWidth: 1,
             borderColor: theme.colors.border,
             backgroundColor: pressed ? theme.colors.surfaceElevated : theme.colors.surface,
-            padding: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 9,
             justifyContent: 'center',
           })}
         >
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '800' }}>{t('reports.dateRange')}</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '900', marginTop: 2 }} numberOfLines={1}>
-            {formatDateRangeLabel(activeRange, locale)}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="calendar-outline" size={17} color={theme.colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontWeight: '800' }}>{t('reports.dateRange')}</Text>
+              <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900', marginTop: 1 }} numberOfLines={1}>
+                {formatDateRangeLabel(activeRange, locale)}
+              </Text>
+            </View>
+          </View>
         </Pressable>
         <AppButton
           title={activeFilterCount > 0 ? `${t('reports.filters')} (${activeFilterCount})` : t('reports.filters')}
@@ -161,13 +380,15 @@ export function ReportsScreen() {
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 12,
+                  gap: 10,
+                  padding: 10,
                   borderColor: selected ? theme.colors.primary : theme.colors.border,
                   backgroundColor: selected ? `${theme.colors.primary}12` : theme.colors.surface,
                 }}
               >
+                <Ionicons name={option.value === 'custom' ? 'calendar-number-outline' : 'calendar-outline'} size={18} color={selected ? theme.colors.primary : theme.colors.textMuted} />
                 <Text style={{ flex: 1, color: theme.colors.text, fontSize: 15, fontWeight: '900' }}>{option.label}</Text>
-                {selected ? <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '900' }}>{t('common.active')}</Text> : null}
+                {selected ? <Ionicons name="checkmark-circle-outline" size={21} color={theme.colors.primary} /> : null}
               </Card>
             </Pressable>
           );
@@ -221,7 +442,8 @@ export function ReportsScreen() {
           label={t('common.currency')}
           value={currency}
           onChange={setCurrency}
-          options={[{ label: t('common.all'), value: 'all' }, ...currencyOptions.map((item) => ({ label: item, value: item }))]}
+          options={[{ label: t('common.all'), value: 'all', icon: 'layers-outline' }, ...currencyOptions.map((item) => ({ label: item, value: item, icon: 'cash-outline' }))]}
+          icon="cash-outline"
           searchable
         />
         <PickerField
@@ -229,7 +451,7 @@ export function ReportsScreen() {
           value={categoryId}
           onChange={setCategoryId}
           options={[
-            { label: t('common.all'), value: 'all' },
+            { label: t('common.all'), value: 'all', icon: 'pricetags-outline' },
             ...categories.map((category) => ({
               label: category.name,
               value: category.id,
@@ -237,6 +459,7 @@ export function ReportsScreen() {
               color: category.color,
             })),
           ]}
+          icon="pricetag-outline"
           searchable
         />
         <PickerField
@@ -244,7 +467,7 @@ export function ReportsScreen() {
           value={walletId}
           onChange={setWalletId}
           options={[
-            { label: t('common.all'), value: 'all' },
+            { label: t('common.all'), value: 'all', icon: 'wallet-outline' },
             ...wallets.map((wallet) => ({
               label: wallet.name,
               value: wallet.id,
@@ -252,102 +475,48 @@ export function ReportsScreen() {
               color: wallet.color,
             })),
           ]}
+          icon="wallet-outline"
           searchable
         />
         <PickerField
           label={t('transaction.type')}
           value={typeFilter}
           onChange={setTypeFilter}
-          options={[{ label: t('common.all'), value: 'all' }, ...transactionTypes.map((item) => ({ label: t(`types.${item}`), value: item }))]}
+          options={[
+            { label: t('common.all'), value: 'all', icon: 'layers-outline' },
+            ...transactionTypes.map((item) => ({
+              label: t(`types.${item}`),
+              value: item,
+              icon: transactionTypeIcons[item],
+              color: reportColorByType[item],
+            })),
+          ]}
+          icon="swap-horizontal-outline"
           searchable
         />
       </BottomSheet>
 
-      <SectionHeader title={t('reports.monthlySummary')} />
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <ReportCard label={t('common.income')} value={summary.income} currency={settings.baseCurrency} icon="trending-up-outline" color={theme.colors.success} />
-        <ReportCard label={t('common.expense')} value={summary.expenses} currency={settings.baseCurrency} icon="trending-down-outline" color={theme.colors.danger} />
-      </View>
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <ReportCard label={t('reports.lossSummary')} value={summary.losses} currency={settings.baseCurrency} icon="alert-circle-outline" color={theme.colors.danger} />
-        <ReportCard label={t('dashboard.netCashflow')} value={summary.netCashflow} currency={settings.baseCurrency} icon="pulse-outline" color={summary.netCashflow >= 0 ? theme.colors.success : theme.colors.danger} />
-      </View>
-
-      <ChartCard title={t('reports.incomeVsExpense')}>
-        <MonthlyBarChart data={trend} />
-      </ChartCard>
-
-      <ChartCard title={t('reports.monthlyCashflowTrend')}>
-        <LineTrendChart data={trend} />
-      </ChartCard>
-
-      <ChartCard title={t('reports.expenseByCategory')}>
-        {expenseByCategory.length === 0 ? (
-          <EmptyState title={t('empty.title')} body={t('empty.reports')} />
-        ) : (
-          <DonutChart data={expenseByCategory.map((row) => ({ ...row, value: row.total }))} />
-        )}
-      </ChartCard>
-
-      <ChartCard title={t('reports.topExpenseCategories')}>
-        <HorizontalBarChart data={expenseByCategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
-      </ChartCard>
-
-      <ChartCard title={t('reports.incomeByCategory')}>
-        <HorizontalBarChart data={incomeByCategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
-      </ChartCard>
-
-      <ChartCard title={t('reports.expenseByCurrency')}>
-        <HorizontalBarChart data={expenseByCurrency.map((row) => ({ ...row, value: row.total }))} currency={currency === 'all' ? settings.baseCurrency : currency} />
-      </ChartCard>
-
-      <ChartCard title={t('reports.walletBalances')}>
-        <DonutChart data={walletRows.map((row) => ({ ...row, value: Math.abs(row.total) }))} />
-      </ChartCard>
-      {wallets.map((wallet) => (
-        <WalletCard key={wallet.id} wallet={wallet} />
-      ))}
-
-      <SectionHeader title={t('reports.loanDebtSummary')} />
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <ReportCard label={t('dashboard.liability')} value={summary.liabilityMovement} currency={settings.baseCurrency} icon="arrow-up-circle-outline" color={theme.colors.warning} />
-        <ReportCard label={t('dashboard.receivable')} value={summary.receivableMovement} currency={settings.baseCurrency} icon="arrow-down-circle-outline" color={theme.colors.success} />
-      </View>
-
-      <SectionHeader title={t('reports.interestSummary')} />
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <ReportCard label={t('types.interest_income')} value={summary.interestIncome} currency={settings.baseCurrency} icon="sparkles-outline" color={theme.colors.success} />
-        <ReportCard label={t('types.interest_expense')} value={summary.interestExpense} currency={settings.baseCurrency} icon="time-outline" color={theme.colors.warning} />
-      </View>
-
-      <SectionHeader title={t('reports.compensationSummary')} />
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <ReportCard label={t('types.compensation_received')} value={summary.compensationReceived} currency={settings.baseCurrency} icon="medkit-outline" color={theme.colors.success} />
-        <ReportCard label={t('types.compensation_paid')} value={summary.compensationPaid} currency={settings.baseCurrency} icon="shield-outline" color={theme.colors.danger} />
-      </View>
-
-      <SectionHeader title={t('reports.taxFeeSummary')} />
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <ReportCard label={t('types.tax')} value={summary.taxes} currency={settings.baseCurrency} icon="document-text-outline" color={theme.colors.warning} />
-        <ReportCard label={t('types.fee')} value={summary.fees} currency={settings.baseCurrency} icon="receipt-outline" color={theme.colors.danger} />
-      </View>
-
-      <HistorySection title={t('reports.topIndividualExpenses')} rows={topExpenses} currency={settings.baseCurrency} />
-      <HistorySection title={t('reports.exchangeHistory')} rows={exchangeHistory} currency={settings.baseCurrency} />
-      <HistorySection title={t('reports.loanDebtHistory')} rows={loanHistory} currency={settings.baseCurrency} />
-
-      <SectionHeader title={t('transaction.activeOnly')} />
-      {filtered.length === 0 ? (
-        <EmptyState title={t('empty.title')} body={t('empty.reports')} />
+      {activeReportWidgets.length === 0 ? (
+        <EmptyState
+          title={t('widgets.allHiddenTitle')}
+          body={t('widgets.allHiddenBody')}
+          icon="options-outline"
+          actionLabel={t('widgets.customizeReports')}
+          actionIcon="options-outline"
+          onAction={() => setCustomizeVisible(true)}
+        />
       ) : (
-        filtered.slice(0, 12).map((transaction) => (
-          <TransactionItem
-            key={transaction.id}
-            transaction={transaction}
-            onPress={() => navigation.navigate('TransactionDetail' as never, { transactionId: transaction.id } as never)}
-          />
-        ))
+        activeReportWidgets.map((widget) => <View key={widget.id}>{renderReportWidget(widget.id as ReportWidgetId)}</View>)
       )}
+
+      <WidgetCustomizeSheet
+        visible={customizeVisible}
+        title={t('widgets.customizeReports')}
+        widgets={reportWidgets}
+        preferences={settings.reportWidgets}
+        onChange={(reportWidgets) => updateSettings({ reportWidgets })}
+        onClose={() => setCustomizeVisible(false)}
+      />
     </Screen>
   );
 }

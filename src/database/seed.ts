@@ -1,24 +1,10 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { defaultCurrencyDefinitions, defaultRatesToBase, getRateToBase } from '../constants/currencies';
-import { getWalletDeltas } from '../logic/ledger';
-import type { BaseCurrency, Category, CreateTransactionInput, Wallet } from '../types';
-import { createId } from '../utils/ids';
-
-const baseCurrency: BaseCurrency = 'USD';
+import { defaultCurrencyDefinitions } from '../constants/currencies';
+import type { Category, Wallet } from '../types';
 
 function nowIso() {
   return new Date().toISOString();
-}
-
-function dateDaysAgo(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date.toISOString();
-}
-
-function baseAmount(amount: number, currency: CreateTransactionInput['currency']) {
-  return amount * (defaultRatesToBase[baseCurrency]?.[currency] ?? getRateToBase(baseCurrency, currency));
 }
 
 const wallets: Wallet[] = [
@@ -144,114 +130,6 @@ const defaultCategoryGroups: Array<Pick<Category, 'id' | 'name' | 'type' | 'icon
   { id: 'cat_other_loan', name: 'Other Loan', type: 'loan', icon: 'help-circle-outline', color: '#64748B', sortOrder: 310 },
 ];
 
-const transactions: CreateTransactionInput[] = [
-  {
-    type: 'income',
-    amount: 2600,
-    currency: 'USDT',
-    walletId: 'wallet_binance_usdt',
-    categoryId: 'cat_salary',
-    date: dateDaysAgo(8),
-    note: 'Monthly retainer',
-    exchangeRate: defaultRatesToBase.USD.USDT,
-    baseCurrency,
-    baseAmount: baseAmount(2600, 'USDT'),
-  },
-  {
-    type: 'income',
-    amount: 800000,
-    currency: 'MMK',
-    walletId: 'wallet_cash_mmk',
-    categoryId: 'cat_freelance',
-    date: dateDaysAgo(6),
-    note: 'Local project payment',
-    exchangeRate: defaultRatesToBase.USD.MMK,
-    baseCurrency,
-    baseAmount: baseAmount(800000, 'MMK'),
-  },
-  {
-    type: 'expense',
-    amount: 190,
-    currency: 'USDT',
-    walletId: 'wallet_binance_usdt',
-    categoryId: 'cat_rent',
-    date: dateDaysAgo(5),
-    note: 'Apartment deposit top-up',
-    exchangeRate: defaultRatesToBase.USD.USDT,
-    baseCurrency,
-    baseAmount: baseAmount(190, 'USDT'),
-  },
-  {
-    type: 'exchange',
-    amount: 300,
-    currency: 'USDT',
-    walletId: 'wallet_binance_usdt',
-    toWalletId: 'wallet_cash_mmk',
-    toAmount: 1260000,
-    toCurrency: 'MMK',
-    categoryId: 'cat_exchange',
-    date: dateDaysAgo(4),
-    note: 'USDT to MMK cash',
-    exchangeRate: defaultRatesToBase.USD.USDT,
-    baseCurrency,
-    baseAmount: baseAmount(300, 'USDT'),
-    feeAmount: 2,
-    feeCurrency: 'USDT',
-  },
-  {
-    type: 'transfer',
-    amount: 200,
-    currency: 'USDT',
-    walletId: 'wallet_binance_usdt',
-    toWalletId: 'wallet_usd_cash',
-    toAmount: 200,
-    toCurrency: 'USD',
-    categoryId: 'cat_transfer',
-    date: dateDaysAgo(3),
-    note: 'USDT to USD cash',
-    exchangeRate: defaultRatesToBase.USD.USDT,
-    baseCurrency,
-    baseAmount: baseAmount(200, 'USDT'),
-  },
-  {
-    type: 'expense',
-    amount: 145000,
-    currency: 'MMK',
-    walletId: 'wallet_cash_mmk',
-    categoryId: 'cat_food',
-    date: dateDaysAgo(2),
-    note: 'Groceries and dinner',
-    exchangeRate: defaultRatesToBase.USD.MMK,
-    baseCurrency,
-    baseAmount: baseAmount(145000, 'MMK'),
-  },
-  {
-    type: 'loan_received',
-    amount: 300000,
-    currency: 'MMK',
-    walletId: 'wallet_cash_mmk',
-    categoryId: 'cat_loan_received',
-    date: dateDaysAgo(1),
-    counterparty: 'Family',
-    note: 'Short-term family loan',
-    exchangeRate: defaultRatesToBase.USD.MMK,
-    baseCurrency,
-    baseAmount: baseAmount(300000, 'MMK'),
-  },
-  {
-    type: 'expense',
-    amount: 850,
-    currency: 'THB',
-    walletId: 'wallet_cash_thb',
-    categoryId: 'cat_transport',
-    date: dateDaysAgo(0),
-    note: 'Transport and mobile top-up',
-    exchangeRate: defaultRatesToBase.USD.THB,
-    baseCurrency,
-    baseAmount: baseAmount(850, 'THB'),
-  },
-];
-
 async function insertSetting(db: SQLiteDatabase, key: string, value: string) {
   await db.runAsync(
     'INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)',
@@ -304,54 +182,6 @@ async function insertDefaultCurrencies(db: SQLiteDatabase) {
       ]
     );
   }
-}
-
-async function applyWalletMovement(db: SQLiteDatabase, input: CreateTransactionInput) {
-  const updatedAt = nowIso();
-  for (const delta of getWalletDeltas({ ...input, feeAmount: input.feeAmount ?? 0 })) {
-    await db.runAsync('UPDATE wallets SET balance = balance + ?, updated_at = ? WHERE id = ?', [
-      delta.amount,
-      updatedAt,
-      delta.walletId,
-    ]);
-  }
-}
-
-async function insertSeedTransaction(db: SQLiteDatabase, input: CreateTransactionInput) {
-  const timestamp = nowIso();
-  await db.runAsync(
-    `INSERT INTO transactions (
-      id, type, amount, currency, wallet_id, to_wallet_id, to_amount, to_currency,
-      category_id, date, note, exchange_rate, base_currency, base_amount,
-      counterparty, related_transaction_id, fee_amount, fee_currency, metadata, deleted_at,
-      created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      createId('tx'),
-      input.type,
-      input.amount,
-      input.currency,
-      input.walletId,
-      input.toWalletId ?? null,
-      input.toAmount ?? null,
-      input.toCurrency ?? null,
-      input.categoryId ?? null,
-      input.date,
-      input.note ?? null,
-      input.exchangeRate,
-      input.baseCurrency,
-      input.baseAmount,
-      input.counterparty?.trim() || null,
-      input.relatedTransactionId ?? null,
-      input.feeAmount ?? 0,
-      input.feeCurrency ?? null,
-      input.metadata ?? null,
-      null,
-      timestamp,
-      timestamp,
-    ]
-  );
-  await applyWalletMovement(db, input);
 }
 
 export async function seedDatabase(db: SQLiteDatabase) {
@@ -410,10 +240,6 @@ export async function seedDatabase(db: SQLiteDatabase) {
     }
 
     if (seededV1?.value !== 'true') {
-      for (const transaction of transactions) {
-        await insertSeedTransaction(db, transaction);
-      }
-
       await insertSetting(db, 'seeded_v1', 'true');
     }
 

@@ -99,7 +99,8 @@ export function SettingsScreen() {
           label={t('settings.baseCurrency')}
           value={settings.baseCurrency}
           onChange={(value) => setBaseCurrency(value as BaseCurrency)}
-          options={(baseCurrencyOptions.includes(settings.baseCurrency) ? baseCurrencyOptions : [settings.baseCurrency, ...baseCurrencyOptions]).map((currency) => ({ label: currency, value: currency }))}
+          options={(baseCurrencyOptions.includes(settings.baseCurrency) ? baseCurrencyOptions : [settings.baseCurrency, ...baseCurrencyOptions]).map((currency) => ({ label: currency, value: currency, icon: 'cash-outline' }))}
+          icon="cash-outline"
           searchable
         />
       </Card>
@@ -162,6 +163,12 @@ export function SettingsScreen() {
 
       <SectionHeader title={t('settings.about')} />
       <Card style={{ gap: 10 }}>
+        <AppButton
+          title={t('settings.userManual')}
+          icon="book-outline"
+          variant="secondary"
+          onPress={() => navigation.navigate('UserManual' as never)}
+        />
         <AppButton
           title={t('settings.notifications')}
           icon="notifications-outline"

@@ -21,6 +21,7 @@ interface PickerFieldProps<T extends string> {
   title?: string;
   placeholder?: string;
   searchable?: boolean;
+  icon?: string;
 }
 
 export function PickerField<T extends string>({
@@ -31,11 +32,13 @@ export function PickerField<T extends string>({
   title,
   placeholder,
   searchable,
+  icon,
 }: PickerFieldProps<T>) {
   const { theme } = useAppPreferences();
   const [visible, setVisible] = useState(false);
   const [query, setQuery] = useState('');
   const selected = options.find((option) => option.value === value);
+  const fallbackIcon = icon ?? 'ellipse-outline';
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return options;
@@ -64,14 +67,10 @@ export function PickerField<T extends string>({
             },
           ]}
         >
-          {selected?.icon ? (
-            <Ionicons name={selected.icon as never} size={18} color={selected.color ?? theme.colors.primary} />
-          ) : (
-            <View style={[styles.dot, { backgroundColor: selected?.color ?? theme.colors.primary }]} />
-          )}
+          <Ionicons name={(selected?.icon ?? fallbackIcon) as never} size={17} color={selected?.color ?? theme.colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }} numberOfLines={1}>
+          <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '900' }} numberOfLines={1}>
             {selected?.label ?? placeholder ?? label}
           </Text>
           {selected?.detail ? (
@@ -94,13 +93,13 @@ export function PickerField<T extends string>({
               },
             ]}
           >
-            <Ionicons name="search-outline" size={18} color={theme.colors.textMuted} />
+            <Ionicons name="search-outline" size={17} color={theme.colors.textMuted} />
             <TextInput
               value={query}
               onChangeText={setQuery}
               placeholder={placeholder ?? label}
               placeholderTextColor={theme.colors.textMuted}
-              style={{ flex: 1, color: theme.colors.text, fontSize: 15, paddingVertical: 0 }}
+              style={{ flex: 1, color: theme.colors.text, fontSize: 14, paddingVertical: 0 }}
             />
           </View>
         ) : null}
@@ -125,14 +124,10 @@ export function PickerField<T extends string>({
               ]}
             >
               <View style={[styles.optionIcon, { backgroundColor: `${accent}18` }]}>
-                {option.icon ? (
-                  <Ionicons name={option.icon as never} size={18} color={accent} />
-                ) : (
-                  <View style={[styles.dot, { backgroundColor: accent }]} />
-                )}
+                <Ionicons name={(option.icon ?? fallbackIcon) as never} size={17} color={accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }}>{option.label}</Text>
+                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '900' }}>{option.label}</Text>
                 {option.detail ? (
                   <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: 2 }}>{option.detail}</Text>
                 ) : null}
@@ -148,28 +143,23 @@ export function PickerField<T extends string>({
 
 const styles = StyleSheet.create({
   field: {
-    minHeight: 48,
+    minHeight: 46,
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 9,
   },
   iconSlot: {
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-  },
   search: {
-    minHeight: 42,
+    minHeight: 40,
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 12,
@@ -178,17 +168,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   option: {
-    minHeight: 50,
+    minHeight: 46,
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 10,
+    padding: 9,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   optionIcon: {
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
