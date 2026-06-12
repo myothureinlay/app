@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
+import { BottomSheet } from '../components/BottomSheet';
 import { Card } from '../components/Card';
 import { ChipGroup } from '../components/ChipGroup';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -98,6 +99,7 @@ export function ManageCategoriesScreen() {
   const [icon, setIcon] = useState(iconByType.expense);
   const [iconSearch, setIconSearch] = useState('');
   const [removeTarget, setRemoveTarget] = useState<Category | null>(null);
+  const [formVisible, setFormVisible] = useState(false);
   const filteredIcons = categoryIcons.filter((item) => item.includes(iconSearch.trim().toLowerCase()));
 
   useEffect(() => {
@@ -114,6 +116,26 @@ export function ManageCategoriesScreen() {
     setType('expense');
     setColor(categoryColors[1]);
     setIcon(iconByType.expense);
+    setIconSearch('');
+  };
+
+  const closeForm = () => {
+    setFormVisible(false);
+    reset();
+  };
+
+  const openAdd = () => {
+    reset();
+    setFormVisible(true);
+  };
+
+  const openEdit = (category: Category) => {
+    setEditing(category);
+    setName(category.name);
+    setType(category.type);
+    setColor(category.color);
+    setIcon(category.icon);
+    setFormVisible(true);
   };
 
   const submit = async () => {
@@ -139,52 +161,23 @@ export function ManageCategoriesScreen() {
       });
     }
     Alert.alert(t('manage.categorySaved'));
-    reset();
+    closeForm();
   };
 
   return (
     <Screen>
-      <ScreenHeader title={t('nav.categories')} subtitle={t('manage.defaultsSeeded')} />
-
-      <Card style={{ gap: 16 }}>
-        <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '900' }}>
-          {editing ? t('manage.editCategory') : t('manage.addCategory')}
-        </Text>
-        <TextField label={t('manage.categoryName')} value={name} onChangeText={setName} />
-        <SelectField
-          label={t('common.type')}
-          value={type}
-          onChange={(value) => {
-            setType(value);
-            setIcon(iconByType[value]);
-          }}
-          options={categoryTypes.map((item) => ({ label: t(`categoryTypes.${item}`), value: item }))}
-        />
-        <TextField label={t('manage.searchIcons')} value={iconSearch} onChangeText={setIconSearch} />
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '700' }}>{t('common.icon')}</Text>
-        <ChipGroup
-          value={icon}
-          onChange={setIcon}
-          options={(filteredIcons.length > 0 ? filteredIcons : categoryIcons).map((item) => ({ label: ' ', value: item, icon: item, color }))}
-        />
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '700' }}>{t('common.color')}</Text>
-        <ChipGroup
-          value={color}
-          onChange={setColor}
-          options={categoryColors.map((item) => ({ label: ' ', value: item, color: item }))}
-        />
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <AppButton title={t('common.save')} icon="checkmark-outline" onPress={submit} style={{ flex: 1 }} />
-          {editing ? <AppButton title={t('common.cancel')} variant="secondary" onPress={reset} style={{ flex: 1 }} /> : null}
-        </View>
-      </Card>
+      <ScreenHeader
+        title={t('nav.categories')}
+        subtitle={t('manage.defaultsSeeded')}
+        action={<AppButton title="" icon="add-outline" onPress={openAdd} style={{ width: 44, paddingHorizontal: 0 }} />}
+      />
 
       <View style={{ gap: 10 }}>
         {categories.length === 0 ? (
           <EmptyState title={t('empty.title')} body={t('empty.categories')} />
         ) : (
           categories.map((category) => (
-            <Pressable key={category.id} onPress={() => setEditing(category)}>
+            <Pressable key={category.id} onPress={() => openEdit(category)}>
               <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View
                   style={{
@@ -213,6 +206,39 @@ export function ManageCategoriesScreen() {
           ))
         )}
       </View>
+      <BottomSheet
+        visible={formVisible}
+        title={editing ? t('manage.editCategory') : t('manage.addCategory')}
+        onClose={closeForm}
+      >
+        <TextField label={t('manage.categoryName')} value={name} onChangeText={setName} />
+        <SelectField
+          label={t('common.type')}
+          value={type}
+          onChange={(value) => {
+            setType(value);
+            setIcon(iconByType[value]);
+          }}
+          options={categoryTypes.map((item) => ({ label: t(`categoryTypes.${item}`), value: item }))}
+        />
+        <TextField label={t('manage.searchIcons')} value={iconSearch} onChangeText={setIconSearch} />
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '800' }}>{t('common.icon')}</Text>
+        <ChipGroup
+          value={icon}
+          onChange={setIcon}
+          options={(filteredIcons.length > 0 ? filteredIcons : categoryIcons).slice(0, 24).map((item) => ({ label: ' ', value: item, icon: item, color }))}
+        />
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '800' }}>{t('common.color')}</Text>
+        <ChipGroup
+          value={color}
+          onChange={setColor}
+          options={categoryColors.map((item) => ({ label: ' ', value: item, color: item }))}
+        />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <AppButton title={t('common.save')} icon="checkmark-outline" onPress={submit} style={{ flex: 1 }} />
+          <AppButton title={t('common.cancel')} variant="secondary" onPress={closeForm} style={{ flex: 1 }} />
+        </View>
+      </BottomSheet>
       <ConfirmDialog
         visible={Boolean(removeTarget)}
         title={t('manage.removeCategory')}

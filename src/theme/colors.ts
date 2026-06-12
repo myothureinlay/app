@@ -1,4 +1,4 @@
-import type { CustomThemeSettings, ThemePreset } from '../types';
+import type { ThemePreset } from '../types';
 
 export type ColorSchemeName = 'light' | 'dark';
 
@@ -359,46 +359,3 @@ export const themeOptions: Array<{ value: ThemePreset | 'system'; labelKey: stri
   { value: 'ruby', labelKey: 'settings.ruby', accent: themes.ruby.colors.primary },
   { value: 'iceBlue', labelKey: 'settings.iceBlue', accent: themes.iceBlue.colors.primary },
 ];
-
-export const defaultCustomTheme: CustomThemeSettings = {
-  primary: '#16A7A0',
-  secondary: '#5E6AD2',
-  accent: '#FF8A4C',
-  background: '#F7F8FC',
-  surface: '#FFFFFF',
-  text: '#171821',
-  success: '#16A34A',
-  warning: '#F5A524',
-  danger: '#E5484D',
-  border: '#E7EAF1',
-  borderRadius: 8,
-  cardStyle: 'soft',
-};
-
-export function buildCustomTheme(settings: CustomThemeSettings = defaultCustomTheme): AppTheme {
-  return {
-    scheme: '#101010' === settings.background.toLowerCase() ? 'dark' : 'light',
-    colors: {
-      background: settings.background,
-      surface: settings.surface,
-      surfaceElevated: settings.cardStyle === 'flat' ? settings.surface : `${settings.primary}12`,
-      text: settings.text,
-      textMuted: settings.text === '#FFFFFF' ? '#D1D5DB' : '#667085',
-      border: settings.border,
-      primary: settings.primary,
-      primaryDark: settings.primary,
-      secondary: settings.secondary,
-      accent: settings.accent,
-      success: settings.success,
-      danger: settings.danger,
-      warning: settings.warning,
-      tabInactive: settings.text === '#FFFFFF' ? '#9CA3AF' : '#8A94A6',
-      shadow: '#000000',
-    },
-    spacing: (value: number) => value * 8,
-    radius: {
-      sm: Math.max(4, settings.borderRadius - 2),
-      md: settings.borderRadius,
-    },
-  };
-}

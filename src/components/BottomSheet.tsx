@@ -35,7 +35,7 @@ export function BottomSheet({ visible, title, onClose, children, footer }: Botto
               accessibilityRole="button"
               onPress={onClose}
               style={({ pressed }) => [
-                styles.closeButton,
+              styles.closeButton,
                 { backgroundColor: theme.colors.surfaceElevated, opacity: pressed ? 0.74 : 1 },
               ]}
             >
@@ -60,8 +60,8 @@ const styles = StyleSheet.create({
   },
   sheet: {
     maxHeight: '86%',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     paddingTop: 8,
     overflow: 'hidden',
@@ -75,8 +75,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   header: {
-    minHeight: 48,
-    paddingHorizontal: 20,
+    minHeight: 44,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -84,23 +84,23 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: '900',
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   content: {
-    padding: 20,
-    gap: 12,
-    paddingBottom: 24,
+    padding: 16,
+    gap: 10,
+    paddingBottom: 20,
   },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    padding: 16,
+    padding: 12,
   },
 });
