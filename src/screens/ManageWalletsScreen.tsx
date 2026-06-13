@@ -60,7 +60,7 @@ export function ManageWalletsScreen() {
       <ScreenHeader
         title={t('nav.wallets')}
         subtitle={t('manage.walletsSubtitle')}
-        action={<AppButton title="" icon="add-outline" onPress={() => setFormVisible(true)} style={{ width: 44, paddingHorizontal: 0 }} />}
+        action={<AppButton title="" icon="add-outline" shape="circle" onPress={() => setFormVisible(true)} />}
       />
 
       <View style={{ gap: 12 }}>

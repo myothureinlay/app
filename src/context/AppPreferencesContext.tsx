@@ -31,10 +31,42 @@ const defaultSettings: AppSettings = {
   notifications: { readIds: [], hiddenIds: [] },
 };
 
+const legacyThemeAliases: Record<string, ThemePreference> = {
+  ocean: 'oceanDark',
+  emerald: 'emeraldLight',
+  royalPurple: 'royalDark',
+  sunset: 'sunsetLight',
+  goldBlack: 'goldDark',
+  minimalGray: 'slateLight',
+  myanmarJade: 'jadeLight',
+  neonCyan: 'oceanDark',
+  midnightBlue: 'slateDark',
+  champagneGold: 'goldLight',
+  sakura: 'sakuraLight',
+  forest: 'emeraldDark',
+  coffee: 'coffeeDark',
+  ruby: 'coralDark',
+  iceBlue: 'oceanLight',
+};
+
+function normalizeThemePreference(theme: unknown): ThemePreference {
+  if (typeof theme !== 'string') return defaultSettings.theme;
+  if (theme === 'system' || theme === 'custom' || theme in themes) return theme as ThemePreference;
+  return legacyThemeAliases[theme] ?? defaultSettings.theme;
+}
+
 function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
+  const normalizedTheme = normalizeThemePreference(settings.theme);
+  const recentThemes = (settings.recentThemes ?? [])
+    .map((theme) => normalizeThemePreference(theme))
+    .filter((theme, index, list) => theme !== 'custom' && list.indexOf(theme) === index)
+    .slice(0, 4);
+
   return {
     ...defaultSettings,
     ...settings,
+    theme: normalizedTheme,
+    recentThemes,
     dashboardWidgets: {
       ...(defaultSettings.dashboardWidgets ?? { order: [], hidden: [] }),
       ...settings.dashboardWidgets,

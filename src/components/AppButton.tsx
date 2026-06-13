@@ -9,6 +9,7 @@ interface AppButtonProps {
   onPress: () => void;
   icon?: string;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  shape?: 'default' | 'circle';
   style?: ViewStyle;
   disabled?: boolean;
 }
@@ -18,6 +19,7 @@ export function AppButton({
   onPress,
   icon,
   variant = 'primary',
+  shape = 'default',
   style,
   disabled,
 }: AppButtonProps) {
@@ -42,19 +44,22 @@ export function AppButton({
       disabled={disabled}
       style={({ pressed }) => [
         styles.button,
+        shape === 'circle' ? styles.circle : null,
         {
           backgroundColor: background,
           borderColor: variant === 'ghost' ? 'transparent' : colors.border,
-          borderRadius: theme.radius.md,
+          borderRadius: shape === 'circle' ? 999 : theme.radius.md,
           opacity: disabled ? 0.55 : pressed ? 0.84 : 1,
         },
         style,
       ]}
     >
       {icon ? <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={18} color={foreground} /> : null}
-      <Text style={[styles.title, { color: foreground }]} numberOfLines={1}>
-        {title}
-      </Text>
+      {title ? (
+        <Text style={[styles.title, { color: foreground }]} numberOfLines={1}>
+          {title}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -72,5 +77,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  circle: {
+    width: 42,
+    height: 42,
+    minHeight: 42,
+    paddingHorizontal: 0,
+    borderRadius: 999,
   },
 });
