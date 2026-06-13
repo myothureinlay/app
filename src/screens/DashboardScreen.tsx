@@ -299,7 +299,7 @@ export function DashboardScreen() {
           <>
             <SectionHeader
               title={t('dashboard.budgets')}
-              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('Budgets' as never)} style={{ width: 42, paddingHorizontal: 0 }} />}
+              action={<AppButton title="" icon="add-outline" shape="circle" onPress={() => navigation.navigate('Budgets' as never)} />}
             />
             {budgets.length === 0 ? (
               <EmptyState
@@ -328,7 +328,7 @@ export function DashboardScreen() {
           <>
             <SectionHeader
               title={t('dashboard.goals')}
-              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('Goals' as never)} style={{ width: 42, paddingHorizontal: 0 }} />}
+              action={<AppButton title="" icon="add-outline" shape="circle" onPress={() => navigation.navigate('Goals' as never)} />}
             />
             {goals.length === 0 ? (
               <EmptyState
@@ -355,7 +355,7 @@ export function DashboardScreen() {
           <>
             <SectionHeader
               title={t('dashboard.walletBalances')}
-              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('ManageWallets' as never)} style={{ width: 42, paddingHorizontal: 0 }} />}
+              action={<AppButton title="" icon="add-outline" shape="circle" onPress={() => navigation.navigate('ManageWallets' as never)} />}
             />
             {wallets.length === 0 ? (
               <EmptyState
@@ -367,9 +367,14 @@ export function DashboardScreen() {
                 onAction={() => navigation.navigate('ManageWallets' as never)}
               />
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 12, paddingHorizontal: 2, paddingRight: 18 }}
+                style={{ marginHorizontal: -2 }}
+              >
                 {wallets.slice(0, 6).map((wallet) => (
-                  <View key={wallet.id} style={{ width: 270 }}>
+                  <View key={wallet.id} style={{ width: 282 }}>
                     <WalletCard wallet={wallet} />
                   </View>
                 ))}
@@ -402,7 +407,7 @@ export function DashboardScreen() {
           <>
             <SectionHeader
               title={t('dashboard.recentTransactions')}
-              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('Add' as never)} style={{ width: 42, paddingHorizontal: 0 }} />}
+              action={<AppButton title="" icon="add-outline" shape="circle" onPress={() => navigation.navigate('Add' as never)} />}
             />
             {recent.length === 0 ? (
               <EmptyState

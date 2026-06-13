@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
-import { Alert, Image, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
 import { Card } from '../components/Card';
@@ -16,7 +16,6 @@ import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
 import type { BackupPayload, BaseCurrency, IconStyle } from '../types';
 import { pickJsonFile, saveAndShareFile } from '../utils/files';
-import { buildExcelCompatibleReport, buildReportImageSvg, buildReportPdf } from '../utils/reportExports';
 
 function stamp() {
   return new Date().toISOString().replace(/[:.]/g, '-');
@@ -25,17 +24,10 @@ function stamp() {
 export function SettingsScreen() {
   const navigation = useNavigation();
   const { theme, settings, setBaseCurrency, updateSettings } = useAppPreferences();
-  const { createCsv, createReportsCsv, createBackup, importBackup, clearData, currencies } = useFinance();
+  const { createCsv, createBackup, importBackup, clearData, currencies } = useFinance();
   const { t } = useI18n();
   const [confirmClear, setConfirmClear] = useState(false);
   const baseCurrencyOptions = currencies.filter((currency) => currency.isActive).map((currency) => currency.code);
-  const reportExportInput = () => ({
-    reportCsv: createReportsCsv(settings),
-    reportTitle: t('settings.exportReportTitle'),
-    dateRangeLabel: t('settings.allSavedData'),
-    generatedAt: new Date().toLocaleString(),
-    logoUri: Image.resolveAssetSource(require('../../assets/icon.png')).uri,
-  });
 
   const exportCsv = async () => {
     const uri = await saveAndShareFile(
@@ -44,54 +36,6 @@ export function SettingsScreen() {
       'text/csv'
     );
     Alert.alert(t('settings.exported'), uri);
-  };
-
-  const exportReports = async () => {
-    const uri = await saveAndShareFile(
-      `finance-reports-${stamp()}.csv`,
-      createReportsCsv(settings),
-      'text/csv'
-    );
-    Alert.alert(t('settings.exported'), uri);
-  };
-
-  const exportExcel = async () => {
-    try {
-      const uri = await saveAndShareFile(
-        `finance-report-${stamp()}.xls`,
-        buildExcelCompatibleReport(reportExportInput()),
-        'application/vnd.ms-excel'
-      );
-      Alert.alert(t('settings.exported'), `${uri}\n${t('settings.excelCompatibleNote')}`);
-    } catch {
-      Alert.alert(t('settings.exportFailed'));
-    }
-  };
-
-  const exportPdf = async () => {
-    try {
-      const uri = await saveAndShareFile(
-        `finance-report-${stamp()}.pdf`,
-        buildReportPdf(reportExportInput()),
-        'application/pdf'
-      );
-      Alert.alert(t('settings.exported'), uri);
-    } catch {
-      Alert.alert(t('settings.exportFailed'));
-    }
-  };
-
-  const exportImage = async () => {
-    try {
-      const uri = await saveAndShareFile(
-        `finance-report-image-${stamp()}.svg`,
-        buildReportImageSvg(reportExportInput()),
-        'image/svg+xml'
-      );
-      Alert.alert(t('settings.exported'), `${uri}\n${t('settings.imageExportNote')}`);
-    } catch {
-      Alert.alert(t('settings.exportFailed'));
-    }
   };
 
   const backupJson = async () => {
@@ -203,10 +147,6 @@ export function SettingsScreen() {
       <SectionHeader title={t('settings.backupRestore')} />
       <Card style={{ gap: 10 }}>
         <AppButton title={t('settings.exportCsv')} icon="document-text-outline" variant="secondary" onPress={exportCsv} />
-        <AppButton title={t('settings.exportReportsCsv')} icon="analytics-outline" variant="secondary" onPress={exportReports} />
-        <AppButton title={t('settings.exportExcel')} icon="grid-outline" variant="secondary" onPress={exportExcel} />
-        <AppButton title={t('settings.exportPdf')} icon="document-outline" variant="secondary" onPress={exportPdf} />
-        <AppButton title={t('settings.exportImage')} icon="image-outline" variant="secondary" onPress={exportImage} />
         <AppButton title={t('settings.backupJson')} icon="archive-outline" variant="secondary" onPress={backupJson} />
         <AppButton title={t('settings.importJson')} icon="cloud-upload-outline" variant="secondary" onPress={importJson} />
         <AppButton

@@ -169,7 +169,7 @@ export function ManageCategoriesScreen() {
       <ScreenHeader
         title={t('nav.categories')}
         subtitle={t('manage.defaultsSeeded')}
-        action={<AppButton title="" icon="add-outline" onPress={openAdd} style={{ width: 44, paddingHorizontal: 0 }} />}
+        action={<AppButton title="" icon="add-outline" shape="circle" onPress={openAdd} />}
       />
 
       <View style={{ gap: 10 }}>

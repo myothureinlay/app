@@ -1,7 +1,7 @@
 export const BUILD_INFO = {
-  appVersion: '6.0.0',
-  label: 'V6 visible UI upgrade',
-  shortLabel: 'Build: V6 / visible UI upgrade',
-  buildId: 'V6-20260612',
-  buildDate: '2026-06-12',
+  appVersion: '6.1.0',
+  label: 'V6.1 UI refinement',
+  shortLabel: 'Build: V6.1 UI refinement',
+  buildId: 'V6.1-20260613',
+  buildDate: '2026-06-13',
 };
