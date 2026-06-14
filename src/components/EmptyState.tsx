@@ -26,21 +26,21 @@ export function EmptyState({
   const { theme, settings } = useAppPreferences();
 
   return (
-    <Card style={{ alignItems: 'center', gap: 10, paddingVertical: 22, paddingHorizontal: 18 }}>
+    <Card style={{ alignItems: 'center', gap: 8, paddingVertical: 16, paddingHorizontal: 16 }}>
       <View
         style={{
-          width: 48,
-          height: 48,
-          borderRadius: theme.radius.md,
-          backgroundColor: `${theme.colors.primary}18`,
+          width: 42,
+          height: 42,
+          borderRadius: 12,
+          backgroundColor: `${theme.colors.primary}20`,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={24} color={theme.colors.primary} />
+        <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={22} color={theme.colors.primary} />
       </View>
-      <Text style={{ color: theme.colors.text, fontSize: 17, fontWeight: '900', textAlign: 'center' }}>{title}</Text>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>{body}</Text>
+      <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '900', textAlign: 'center' }}>{title}</Text>
+      <Text style={{ color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 18 }}>{body}</Text>
       {actionLabel && onAction ? (
         <AppButton title={actionLabel} icon={actionIcon} onPress={onAction} style={{ marginTop: 4, alignSelf: 'stretch' }} />
       ) : null}

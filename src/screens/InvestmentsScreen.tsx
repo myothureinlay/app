@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useRoute } from '@react-navigation/native';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { AmountInput } from '../components/AmountInput';
@@ -36,7 +37,40 @@ function optionalNumber(value: string) {
   return Number.isFinite(parsed) && value.trim() !== '' ? parsed : null;
 }
 
+function InvestmentActionButton({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 38,
+        height: 36,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: pressed ? `${color}24` : `${color}16`,
+        borderWidth: 1,
+        borderColor: `${color}30`,
+      })}
+    >
+      <Ionicons name={icon as never} size={20} color={color} />
+    </Pressable>
+  );
+}
+
 export function InvestmentsScreen() {
+  const route = useRoute<any>();
   const { theme, settings } = useAppPreferences();
   const { investments, wallets, currencies, addInvestment, editInvestment, removeInvestmentById } = useFinance();
   const { t, locale } = useI18n();
@@ -81,6 +115,10 @@ export function InvestmentsScreen() {
     reset();
     setFormVisible(true);
   };
+
+  useEffect(() => {
+    if (route.params?.openAddNonce) openAdd();
+  }, [route.params?.openAddNonce]);
 
   const openEdit = (record: InvestmentRecord) => {
     setEditing(record);
@@ -149,11 +187,7 @@ export function InvestmentsScreen() {
 
   return (
     <Screen>
-      <ScreenHeader
-        title={t('nav.investments')}
-        subtitle={t('investments.subtitle')}
-        action={<AppButton title="" icon="add-outline" onPress={openAdd} style={{ width: 44, minHeight: 44, borderRadius: 22, paddingHorizontal: 0 }} />}
-      />
+      <ScreenHeader title={t('nav.investments')} subtitle={t('investments.subtitle')} />
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <ReportCard label={t('investments.totalInvested')} value={summary.totalInvested} currency={settings.baseCurrency} icon="trending-up-outline" color={theme.colors.primary} />
@@ -177,14 +211,7 @@ export function InvestmentsScreen() {
 
       <SectionHeader title={t('investments.records')} />
       {activeInvestments.length === 0 ? (
-        <EmptyState
-          title={t('investments.noInvestments')}
-          body={t('investments.noInvestmentsBody')}
-          icon="trending-up-outline"
-          actionLabel={t('investments.addInvestment')}
-          actionIcon="add-circle-outline"
-          onAction={openAdd}
-        />
+        <EmptyState title={t('investments.noInvestments')} body={t('investments.noInvestmentsBody')} icon="trending-up-outline" />
       ) : (
         <View style={{ gap: 10 }}>
           {activeInvestments.map((record) => (
@@ -219,8 +246,18 @@ export function InvestmentsScreen() {
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-                  <AppButton title="" icon="create-outline" variant="ghost" onPress={() => openEdit(record)} style={{ width: 40, minHeight: 34 }} />
-                  <AppButton title="" icon="trash-outline" variant="ghost" onPress={() => removeRecord(record)} style={{ width: 40, minHeight: 34 }} />
+                  <InvestmentActionButton
+                    icon="create-outline"
+                    label={t('common.edit')}
+                    color={theme.colors.primary}
+                    onPress={() => openEdit(record)}
+                  />
+                  <InvestmentActionButton
+                    icon="trash-outline"
+                    label={t('common.remove')}
+                    color={theme.colors.danger}
+                    onPress={() => removeRecord(record)}
+                  />
                 </View>
               </Card>
             </Pressable>
@@ -283,7 +320,7 @@ export function InvestmentsScreen() {
           </View>
         </View>
         <DatePickerField label={t('common.date')} value={date} onChangeText={setDate} />
-        <TextField label={t('transaction.note')} value={note} onChangeText={setNote} multiline />
+        <TextField label={t('common.note')} value={note} onChangeText={setNote} multiline />
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <AppButton title={t('common.save')} icon="checkmark-outline" onPress={submit} style={{ flex: 1 }} />
           <AppButton title={t('common.cancel')} variant="secondary" onPress={closeForm} style={{ flex: 1 }} />

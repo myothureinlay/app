@@ -8,15 +8,16 @@ interface CardProps extends PropsWithChildren {
 }
 
 export function Card({ children, style }: CardProps) {
-  const { theme } = useAppPreferences();
+  const { theme, settings } = useAppPreferences();
+  const isAurora = settings.theme === 'auroraGlass';
   const shadowStyle =
     Platform.OS === 'web'
-      ? ({ boxShadow: `0 12px 24px ${theme.colors.shadow}14` } as ViewStyle)
+      ? ({ boxShadow: `0 8px 18px ${theme.colors.shadow}${isAurora ? '1F' : '0D'}` } as ViewStyle)
       : ({
           shadowColor: theme.colors.shadow,
-          shadowOffset: { width: 0, height: 12 },
-          shadowOpacity: theme.cardStyle === 'flat' ? 0.03 : 0.08,
-          shadowRadius: 24,
+          shadowOffset: { width: 0, height: isAurora ? 8 : 6 },
+          shadowOpacity: isAurora ? 0.12 : theme.cardStyle === 'flat' ? 0.02 : 0.055,
+          shadowRadius: isAurora ? 18 : 12,
           elevation: theme.elevation.card,
         } as ViewStyle);
 
@@ -25,7 +26,7 @@ export function Card({ children, style }: CardProps) {
       style={[
         styles.card,
         {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: isAurora ? theme.colors.surface : theme.colors.surface,
           borderColor: theme.colors.border,
           borderRadius: theme.radius.lg,
           borderWidth: theme.cardStyle === 'flat' ? 0 : StyleSheet.hairlineWidth,
@@ -41,6 +42,6 @@ export function Card({ children, style }: CardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    padding: 14,
+    padding: 12,
   },
 });

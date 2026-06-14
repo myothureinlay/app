@@ -1,4 +1,5 @@
 import { PropsWithChildren } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,7 +12,8 @@ interface ScreenProps extends PropsWithChildren {
 }
 
 export function Screen({ children, scroll = true, style, contentStyle }: ScreenProps) {
-  const { theme } = useAppPreferences();
+  const { theme, settings } = useAppPreferences();
+  const isAurora = settings.theme === 'auroraGlass';
 
   const body = scroll ? (
     <ScrollView
@@ -48,6 +50,14 @@ export function Screen({ children, scroll = true, style, contentStyle }: ScreenP
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }, style]}>
+      {isAurora ? (
+        <LinearGradient
+          colors={['#06111F', '#081A31', '#130F2D']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.select({ ios: 'padding', android: undefined })}

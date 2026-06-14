@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 
 import { useAppPreferences } from '../context/AppPreferencesContext';
+import { useI18n } from '../i18n/useI18n';
 import { formatMoney } from '../utils/money';
 import { Card } from './Card';
 
@@ -29,8 +30,8 @@ export function ChartCard({ title, children }: ChartCardProps) {
   const { theme } = useAppPreferences();
 
   return (
-    <Card style={{ gap: 14 }}>
-      <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '900' }}>{title}</Text>
+    <Card style={{ gap: 10 }}>
+      <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }}>{title}</Text>
       {children}
     </Card>
   );
@@ -120,6 +121,7 @@ export function LineTrendChart({ data }: { data: MonthlyChartDatum[] }) {
 
 export function DonutChart({ data }: { data: ChartDatum[] }) {
   const { theme } = useAppPreferences();
+  const { t } = useI18n();
   const size = 164;
   const radius = 54;
   const strokeWidth = 18;
@@ -128,7 +130,7 @@ export function DonutChart({ data }: { data: ChartDatum[] }) {
   let offset = 0;
 
   if (total <= 0) {
-    return <Text style={{ color: theme.colors.textMuted }}>No data</Text>;
+    return <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('reports.noData')}</Text>;
   }
 
   return (
@@ -176,10 +178,11 @@ export function DonutChart({ data }: { data: ChartDatum[] }) {
 
 export function HorizontalBarChart({ data, currency }: { data: ChartDatum[]; currency: string }) {
   const { theme } = useAppPreferences();
+  const { t } = useI18n();
   const max = Math.max(...data.map((row) => Math.abs(row.value)), 1);
 
   if (data.length === 0) {
-    return <Text style={{ color: theme.colors.textMuted }}>No data</Text>;
+    return <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('reports.noData')}</Text>;
   }
 
   return (

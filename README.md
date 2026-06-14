@@ -4,6 +4,18 @@ A React Native app built with Expo, TypeScript, and SQLite. It stores your finan
 
 This guide is written for beginners on macOS. The normal Android APK build path uses Expo EAS Build in the cloud, so you do not need to install Android Studio just to create an APK.
 
+## Version 7.1 Mobile V7.1
+
+- Adds the premium Aurora Glass theme with Expo-safe gradient, translucent card, tab, FAB, sheet, and picker styling.
+- Rebuilds the Theme picker into explicit sections: System Auto, Default Light/Dark, 11 light themes, 11 dark themes, and Premium themes.
+- Keeps the root floating add button fixed above the bottom tabs on Dashboard, Records, Reports, and Investments.
+- Removes the duplicate Investments header add button; Add investment now opens from the shared floating add sheet.
+- Keeps Reports quick date buttons outside the card and makes the Date range sheet custom-date only.
+- Tightens report card spacing, empty states, investment summary cards, and record actions for a denser Android preview UI.
+- Reduces heavy shadows and improves icon contrast/touch targets across cards, action buttons, tabs, sheets, and menus.
+- Cleans the Dashboard account menu by removing the generic Settings row and grouping Appearance, Data, Support, and Build actions.
+- Android preview build remains the primary target. Use `eas build --platform android --profile preview --clear-cache`.
+
 ## Version 7.0 Mobile V7
 
 - Bottom tabs are exactly Dashboard, Records, Reports, and Investments.

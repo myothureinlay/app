@@ -13,7 +13,8 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ visible, title, onClose, children, footer }: BottomSheetProps) {
-  const { theme } = useAppPreferences();
+  const { theme, settings } = useAppPreferences();
+  const isAurora = settings.theme === 'auroraGlass';
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -23,8 +24,9 @@ export function BottomSheet({ visible, title, onClose, children, footer }: Botto
           style={[
             styles.sheet,
             {
-              backgroundColor: theme.colors.surface,
+              backgroundColor: isAurora ? '#0A1829F2' : theme.colors.surface,
               borderColor: theme.colors.border,
+              elevation: theme.elevation.sheet,
             },
           ]}
         >
@@ -65,7 +67,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     paddingTop: 8,
     overflow: 'hidden',
-    elevation: 8,
+    elevation: 5,
   },
   handle: {
     alignSelf: 'center',
@@ -96,9 +98,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    padding: 14,
+    padding: 12,
     gap: 8,
-    paddingBottom: 20,
+    paddingBottom: 18,
   },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
