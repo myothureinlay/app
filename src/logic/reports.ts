@@ -225,6 +225,56 @@ export function groupTransactionsByCategory(
   return Object.values(totals).sort((a, b) => b.total - a.total);
 }
 
+export function groupTransactionsByParentCategory(
+  transactions: TransactionWithMeta[],
+  baseCurrency: BaseCurrency,
+  mode: 'income' | 'expense'
+): NamedTotal[] {
+  const totals = activeTransactions(transactions).reduce<Record<string, NamedTotal>>((acc, transaction) => {
+    const include = mode === 'income' ? isIncomeLike(transaction.type) : isExpenseLike(transaction.type) || transaction.type === 'loss';
+    if (!include) return acc;
+
+    const key = transaction.parentCategoryId ?? transaction.categoryId ?? `uncategorized-parent-${mode}`;
+    if (!acc[key]) {
+      acc[key] = {
+        key,
+        label: transaction.parentCategoryName ?? transaction.categoryName ?? 'Uncategorized',
+        color: transaction.parentCategoryColor ?? transaction.categoryColor ?? (mode === 'income' ? '#16A34A' : '#E5484D'),
+        total: 0,
+      };
+    }
+    acc[key].total += valueInBase(transaction, baseCurrency);
+    return acc;
+  }, {});
+
+  return Object.values(totals).sort((a, b) => b.total - a.total);
+}
+
+export function groupTransactionsBySubcategory(
+  transactions: TransactionWithMeta[],
+  baseCurrency: BaseCurrency,
+  mode: 'income' | 'expense'
+): NamedTotal[] {
+  const totals = activeTransactions(transactions).reduce<Record<string, NamedTotal>>((acc, transaction) => {
+    const include = mode === 'income' ? isIncomeLike(transaction.type) : isExpenseLike(transaction.type) || transaction.type === 'loss';
+    if (!include) return acc;
+
+    const key = transaction.subcategoryId ?? `no-subcategory-${mode}`;
+    if (!acc[key]) {
+      acc[key] = {
+        key,
+        label: transaction.subcategoryName ?? 'No subcategory',
+        color: transaction.subcategoryColor ?? transaction.categoryColor ?? (mode === 'income' ? '#16A34A' : '#E5484D'),
+        total: 0,
+      };
+    }
+    acc[key].total += valueInBase(transaction, baseCurrency);
+    return acc;
+  }, {});
+
+  return Object.values(totals).sort((a, b) => b.total - a.total);
+}
+
 export function groupExpensesByCurrency(transactions: TransactionWithMeta[]): NamedTotal[] {
   const totals = activeTransactions(transactions).reduce<Record<string, NamedTotal>>((acc, transaction) => {
     if (!(isExpenseLike(transaction.type) || transaction.type === 'loss')) return acc;

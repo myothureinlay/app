@@ -6,6 +6,8 @@ import {
   calculateReportSummary,
   groupExpensesByCurrency,
   groupTransactionsByCategory,
+  groupTransactionsByParentCategory,
+  groupTransactionsBySubcategory,
   monthlyIncomeExpense,
   topIndividualExpenses,
   walletDistribution,
@@ -29,6 +31,8 @@ import type {
   GoalStatus,
   GoalType,
   GoalWithProgress,
+  InvestmentRecord,
+  InvestmentAssetType,
   Transaction,
   TransactionType,
   TransactionWithMeta,
@@ -59,6 +63,7 @@ type WalletRow = {
 
 type CategoryRow = {
   id: string;
+  parent_id: string | null;
   name: string;
   type: CategoryType;
   icon: string;
@@ -152,6 +157,8 @@ type TransactionRow = {
   to_amount: number | null;
   to_currency: CurrencyCode | null;
   category_id: string | null;
+  parent_category_id: string | null;
+  subcategory_id: string | null;
   date: string;
   note: string | null;
   exchange_rate: number;
@@ -174,6 +181,33 @@ type TransactionMetaRow = TransactionRow & {
   category_name: string | null;
   category_color: string | null;
   category_icon: string | null;
+  parent_category_name: string | null;
+  parent_category_color: string | null;
+  parent_category_icon: string | null;
+  subcategory_name: string | null;
+  subcategory_color: string | null;
+  subcategory_icon: string | null;
+};
+
+type InvestmentRow = {
+  id: string;
+  type: InvestmentRecord['type'];
+  asset_type: InvestmentAssetType;
+  asset_name: string;
+  quantity: number | null;
+  unit_price: number | null;
+  amount: number;
+  currency: CurrencyCode;
+  wallet_id: string | null;
+  transaction_id: string | null;
+  current_value: number | null;
+  realized_profit_loss: number | null;
+  unrealized_profit_loss: number | null;
+  date: string;
+  note: string | null;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export interface TransactionFilters {
@@ -181,7 +215,14 @@ export interface TransactionFilters {
   to?: string;
   currency?: CurrencyCode | 'all';
   categoryId?: string | 'all';
+  parentCategoryId?: string | 'all';
+  subcategoryId?: string | 'all';
   walletId?: string | 'all';
+  type?: TransactionType | 'all';
+  search?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  sort?: 'newest' | 'oldest' | 'amount_desc' | 'amount_asc';
   includeDeleted?: boolean;
 }
 
@@ -205,6 +246,7 @@ function mapWallet(row: WalletRow): Wallet {
 function mapCategory(row: CategoryRow): Category {
   return {
     id: row.id,
+    parentId: row.parent_id,
     name: row.name,
     type: row.type,
     icon: row.icon,
@@ -308,6 +350,8 @@ function mapTransaction(row: TransactionRow): Transaction {
     toAmount: row.to_amount,
     toCurrency: row.to_currency,
     categoryId: row.category_id,
+    parentCategoryId: row.parent_category_id ?? row.category_id,
+    subcategoryId: row.subcategory_id,
     date: row.date,
     note: row.note,
     exchangeRate: row.exchange_rate,
@@ -333,6 +377,35 @@ function mapTransactionWithMeta(row: TransactionMetaRow): TransactionWithMeta {
     categoryName: row.category_name,
     categoryColor: row.category_color,
     categoryIcon: row.category_icon,
+    parentCategoryName: row.parent_category_name,
+    parentCategoryColor: row.parent_category_color,
+    parentCategoryIcon: row.parent_category_icon,
+    subcategoryName: row.subcategory_name,
+    subcategoryColor: row.subcategory_color,
+    subcategoryIcon: row.subcategory_icon,
+  };
+}
+
+function mapInvestment(row: InvestmentRow): InvestmentRecord {
+  return {
+    id: row.id,
+    type: row.type,
+    assetType: row.asset_type,
+    assetName: row.asset_name,
+    quantity: row.quantity,
+    unitPrice: row.unit_price,
+    amount: row.amount,
+    currency: row.currency,
+    walletId: row.wallet_id,
+    transactionId: row.transaction_id,
+    currentValue: row.current_value,
+    realizedProfitLoss: row.realized_profit_loss,
+    unrealizedProfitLoss: row.unrealized_profit_loss,
+    date: row.date,
+    note: row.note,
+    deletedAt: row.deleted_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -353,6 +426,8 @@ function normalizeTransactionInput(input: CreateTransactionInput) {
     feeAmount: input.feeAmount ?? 0,
     feeCurrency: input.feeCurrency ?? null,
     metadata: input.metadata ?? null,
+    parentCategoryId: input.parentCategoryId ?? input.categoryId ?? null,
+    subcategoryId: input.subcategoryId ?? null,
   };
 }
 
@@ -478,12 +553,61 @@ function buildTransactionWhere(filters: TransactionFilters) {
     params.push(filters.categoryId);
   }
 
+  if (filters.parentCategoryId && filters.parentCategoryId !== 'all') {
+    where.push('COALESCE(t.parent_category_id, t.category_id) = ?');
+    params.push(filters.parentCategoryId);
+  }
+
+  if (filters.subcategoryId && filters.subcategoryId !== 'all') {
+    if (filters.subcategoryId === 'none') {
+      where.push('t.subcategory_id IS NULL');
+    } else {
+      where.push('t.subcategory_id = ?');
+      params.push(filters.subcategoryId);
+    }
+  }
+
+  if (filters.type && filters.type !== 'all') {
+    where.push('t.type = ?');
+    params.push(filters.type);
+  }
+
   if (filters.walletId && filters.walletId !== 'all') {
     where.push('(t.wallet_id = ? OR t.to_wallet_id = ?)');
     params.push(filters.walletId, filters.walletId);
   }
 
+  if (filters.search?.trim()) {
+    const query = `%${filters.search.trim().toLowerCase()}%`;
+    where.push(`(
+      LOWER(COALESCE(t.note, '')) LIKE ? OR
+      LOWER(COALESCE(t.counterparty, '')) LIKE ? OR
+      LOWER(COALESCE(c.name, '')) LIKE ? OR
+      LOWER(COALESCE(pc.name, '')) LIKE ? OR
+      LOWER(COALESCE(sc.name, '')) LIKE ? OR
+      LOWER(w.name) LIKE ?
+    )`);
+    params.push(query, query, query, query, query, query);
+  }
+
+  if (typeof filters.minAmount === 'number') {
+    where.push('t.amount >= ?');
+    params.push(filters.minAmount);
+  }
+
+  if (typeof filters.maxAmount === 'number') {
+    where.push('t.amount <= ?');
+    params.push(filters.maxAmount);
+  }
+
   return { where, params };
+}
+
+function transactionOrderBy(sort: TransactionFilters['sort']) {
+  if (sort === 'oldest') return 't.date ASC, t.created_at ASC';
+  if (sort === 'amount_desc') return 't.amount DESC, t.date DESC';
+  if (sort === 'amount_asc') return 't.amount ASC, t.date DESC';
+  return 't.date DESC, t.created_at DESC';
 }
 
 export async function fetchTransactions(filters: TransactionFilters = {}) {
@@ -498,13 +622,21 @@ export async function fetchTransactions(filters: TransactionFilters = {}) {
       tw.name AS to_wallet_name,
       c.name AS category_name,
       c.color AS category_color,
-      c.icon AS category_icon
+      c.icon AS category_icon,
+      pc.name AS parent_category_name,
+      pc.color AS parent_category_color,
+      pc.icon AS parent_category_icon,
+      sc.name AS subcategory_name,
+      sc.color AS subcategory_color,
+      sc.icon AS subcategory_icon
     FROM transactions t
     JOIN wallets w ON w.id = t.wallet_id
     LEFT JOIN wallets tw ON tw.id = t.to_wallet_id
     LEFT JOIN categories c ON c.id = t.category_id
+    LEFT JOIN categories pc ON pc.id = COALESCE(t.parent_category_id, t.category_id)
+    LEFT JOIN categories sc ON sc.id = t.subcategory_id
     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-    ORDER BY t.date DESC, t.created_at DESC`,
+    ORDER BY ${transactionOrderBy(filters.sort)}`,
     params
   );
 
@@ -524,6 +656,85 @@ export async function fetchRawTransactions(includeDeleted = true) {
   return rows.map(mapTransaction);
 }
 
+export async function fetchInvestments(includeDeleted = false) {
+  const db = await getDb();
+  const rows = await db.getAllAsync<InvestmentRow>(
+    `SELECT * FROM investments ${includeDeleted ? '' : 'WHERE deleted_at IS NULL'} ORDER BY date DESC, created_at DESC`
+  );
+  return rows.map(mapInvestment);
+}
+
+export async function createInvestment(
+  input: Omit<InvestmentRecord, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
+) {
+  const db = await getDb();
+  const createdAt = timestamp();
+  await db.runAsync(
+    `INSERT INTO investments (
+      id, type, asset_type, asset_name, quantity, unit_price, amount, currency, wallet_id, transaction_id,
+      current_value, realized_profit_loss, unrealized_profit_loss, date, note, deleted_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+    [
+      createId('inv'),
+      input.type,
+      input.assetType,
+      input.assetName.trim(),
+      input.quantity ?? null,
+      input.unitPrice ?? null,
+      input.amount,
+      input.currency,
+      input.walletId ?? null,
+      input.transactionId ?? null,
+      input.currentValue ?? null,
+      input.realizedProfitLoss ?? null,
+      input.unrealizedProfitLoss ?? null,
+      input.date,
+      input.note?.trim() || null,
+      createdAt,
+      createdAt,
+    ]
+  );
+}
+
+export async function updateInvestment(input: InvestmentRecord) {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE investments SET
+      type = ?, asset_type = ?, asset_name = ?, quantity = ?, unit_price = ?, amount = ?, currency = ?,
+      wallet_id = ?, transaction_id = ?, current_value = ?, realized_profit_loss = ?, unrealized_profit_loss = ?,
+      date = ?, note = ?, updated_at = ?
+    WHERE id = ?`,
+    [
+      input.type,
+      input.assetType,
+      input.assetName.trim(),
+      input.quantity ?? null,
+      input.unitPrice ?? null,
+      input.amount,
+      input.currency,
+      input.walletId ?? null,
+      input.transactionId ?? null,
+      input.currentValue ?? null,
+      input.realizedProfitLoss ?? null,
+      input.unrealizedProfitLoss ?? null,
+      input.date,
+      input.note?.trim() || null,
+      timestamp(),
+      input.id,
+    ]
+  );
+}
+
+export async function deleteInvestment(id: string) {
+  const db = await getDb();
+  const deletedAt = timestamp();
+  await db.runAsync('UPDATE investments SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+    deletedAt,
+    deletedAt,
+    id,
+  ]);
+}
+
 export async function createTransaction(input: CreateTransactionInput) {
   const db = await getDb();
   const id = createId('tx');
@@ -535,9 +746,9 @@ export async function createTransaction(input: CreateTransactionInput) {
       `INSERT INTO transactions (
         id, type, amount, currency, wallet_id, to_wallet_id, to_amount, to_currency,
         category_id, date, note, exchange_rate, base_currency, base_amount,
-        counterparty, related_transaction_id, fee_amount, fee_currency, metadata, deleted_at,
+        counterparty, related_transaction_id, fee_amount, fee_currency, metadata, parent_category_id, subcategory_id, deleted_at,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         normalized.type,
@@ -558,6 +769,8 @@ export async function createTransaction(input: CreateTransactionInput) {
         normalized.feeAmount,
         normalized.feeCurrency,
         normalized.metadata,
+        normalized.parentCategoryId,
+        normalized.subcategoryId,
         null,
         createdAt,
         createdAt,
@@ -605,6 +818,8 @@ export async function updateTransaction(input: UpdateTransactionInput) {
         fee_amount = ?,
         fee_currency = ?,
         metadata = ?,
+        parent_category_id = ?,
+        subcategory_id = ?,
         updated_at = ?
       WHERE id = ?`,
       [
@@ -626,6 +841,8 @@ export async function updateTransaction(input: UpdateTransactionInput) {
         normalized.feeAmount,
         normalized.feeCurrency,
         normalized.metadata,
+        normalized.parentCategoryId,
+        normalized.subcategoryId,
         updatedAt,
         input.id,
       ]
@@ -717,15 +934,16 @@ export async function removeWallet(id: string) {
   return decision;
 }
 
-export async function createCategory(input: Pick<Category, 'name' | 'type' | 'color' | 'icon'>) {
+export async function createCategory(input: Pick<Category, 'name' | 'type' | 'color' | 'icon'> & { parentId?: string | null }) {
   const db = await getDb();
   const createdAt = timestamp();
   await db.runAsync(
     `INSERT INTO categories (
-      id, name, type, icon, color, sort_order, is_default, is_archived, removed_at, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, NULL, ?, ?)`,
+      id, parent_id, name, type, icon, color, sort_order, is_default, is_archived, removed_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, NULL, ?, ?)`,
     [
       createId('cat'),
+      input.parentId ?? null,
       input.name,
       input.type,
       input.icon,
@@ -737,12 +955,12 @@ export async function createCategory(input: Pick<Category, 'name' | 'type' | 'co
   );
 }
 
-export async function updateCategory(input: Pick<Category, 'id' | 'name' | 'type' | 'color' | 'icon'>) {
+export async function updateCategory(input: Pick<Category, 'id' | 'name' | 'type' | 'color' | 'icon'> & { parentId?: string | null }) {
   const db = await getDb();
   const updatedAt = timestamp();
   await db.runAsync(
-    `UPDATE categories SET name = ?, type = ?, color = ?, icon = ?, updated_at = ? WHERE id = ?`,
-    [input.name, input.type, input.color, input.icon, updatedAt, input.id]
+    `UPDATE categories SET parent_id = ?, name = ?, type = ?, color = ?, icon = ?, updated_at = ? WHERE id = ?`,
+    [input.parentId ?? null, input.name, input.type, input.color, input.icon, updatedAt, input.id]
   );
 }
 
@@ -753,12 +971,16 @@ export async function archiveCategory(id: string) {
 export async function removeCategory(id: string) {
   const db = await getDb();
   const usage = await db.getFirstAsync<{ count: number }>(
-    'SELECT COUNT(*) AS count FROM transactions WHERE category_id = ?',
+    'SELECT COUNT(*) AS count FROM transactions WHERE category_id = ? OR parent_category_id = ? OR subcategory_id = ?',
+    [id, id, id]
+  );
+  const childUsage = await db.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM categories WHERE parent_id = ? AND is_archived = 0',
     id
   );
   const decision = getCategoryRemoveDecision(usage?.count ?? 0);
 
-  if (decision.action === 'hard_delete') {
+  if (decision.action === 'hard_delete' && (childUsage?.count ?? 0) === 0) {
     await db.runAsync('DELETE FROM categories WHERE id = ?', id);
     return decision;
   }
@@ -953,16 +1175,17 @@ export async function clearFinanceData() {
     await db.runAsync('DELETE FROM goal_contributions');
     await db.runAsync('DELETE FROM goals');
     await db.runAsync('DELETE FROM budgets');
+    await db.runAsync('DELETE FROM investments');
     await db.runAsync('DELETE FROM transactions');
     await db.runAsync('DELETE FROM categories');
     await db.runAsync('DELETE FROM wallets');
-    await db.runAsync("DELETE FROM app_settings WHERE key IN ('seeded_v1', 'seeded_v2', 'seeded_v3')");
+    await db.runAsync("DELETE FROM app_settings WHERE key IN ('seeded_v1', 'seeded_v2', 'seeded_v3', 'seeded_v4')");
   });
   await seedDatabase(db);
 }
 
 export async function exportBackupPayload(settings: AppSettings): Promise<BackupPayload> {
-  const [wallets, categories, transactions, currencies, budgets, goals, goalContributions, backupMetadata] = await Promise.all([
+  const [wallets, categories, transactions, currencies, budgets, goals, goalContributions, backupMetadata, investments] = await Promise.all([
     fetchWallets(true),
     fetchCategories(true),
     fetchRawTransactions(true),
@@ -971,10 +1194,11 @@ export async function exportBackupPayload(settings: AppSettings): Promise<Backup
     fetchGoals(true),
     fetchGoalContributions(),
     fetchBackupMetadata(),
+    fetchInvestments(true),
   ]);
 
   return {
-    version: 3,
+    version: 4,
     exportedAt: timestamp(),
     settings,
     wallets,
@@ -985,6 +1209,7 @@ export async function exportBackupPayload(settings: AppSettings): Promise<Backup
     goals,
     goalContributions,
     backupMetadata,
+    investments,
     exchangeRates: defaultRatesToBase,
     reportMetadata: {
       includesSoftDeletedTransactions: true,
@@ -999,7 +1224,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 export function validateBackupPayload(payload: unknown): asserts payload is BackupPayload {
   if (!isObject(payload)) throw new Error('Backup must be an object');
-  if (payload.version !== 1 && payload.version !== 2 && payload.version !== 3) throw new Error('Unsupported backup version');
+  if (payload.version !== 1 && payload.version !== 2 && payload.version !== 3 && payload.version !== 4) throw new Error('Unsupported backup version');
   if (!Array.isArray(payload.wallets)) throw new Error('Backup wallets are missing');
   if (!Array.isArray(payload.categories)) throw new Error('Backup categories are missing');
   if (!Array.isArray(payload.transactions)) throw new Error('Backup transactions are missing');
@@ -1032,6 +1257,7 @@ export async function importBackupPayload(payload: BackupPayload) {
     await db.runAsync('DELETE FROM goal_contributions');
     await db.runAsync('DELETE FROM goals');
     await db.runAsync('DELETE FROM budgets');
+    await db.runAsync('DELETE FROM investments');
     await db.runAsync('DELETE FROM transactions');
     await db.runAsync('DELETE FROM categories');
     await db.runAsync('DELETE FROM wallets');
@@ -1086,10 +1312,11 @@ export async function importBackupPayload(payload: BackupPayload) {
     for (const category of payload.categories) {
       await db.runAsync(
         `INSERT INTO categories (
-          id, name, type, icon, color, sort_order, is_default, is_archived, removed_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, parent_id, name, type, icon, color, sort_order, is_default, is_archived, removed_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           category.id,
+          category.parentId ?? null,
           category.name,
           category.type,
           category.icon,
@@ -1109,9 +1336,9 @@ export async function importBackupPayload(payload: BackupPayload) {
         `INSERT INTO transactions (
           id, type, amount, currency, wallet_id, to_wallet_id, to_amount, to_currency,
           category_id, date, note, exchange_rate, base_currency, base_amount,
-          counterparty, related_transaction_id, fee_amount, fee_currency, metadata, deleted_at,
+          counterparty, related_transaction_id, fee_amount, fee_currency, metadata, parent_category_id, subcategory_id, deleted_at,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           transaction.id,
           transaction.type,
@@ -1132,9 +1359,40 @@ export async function importBackupPayload(payload: BackupPayload) {
           transaction.feeAmount ?? 0,
           transaction.feeCurrency ?? null,
           transaction.metadata ?? null,
+          transaction.parentCategoryId ?? transaction.categoryId ?? null,
+          transaction.subcategoryId ?? null,
           transaction.deletedAt ?? null,
           transaction.createdAt,
           transaction.updatedAt,
+        ]
+      );
+    }
+
+    for (const investment of payload.investments ?? []) {
+      await db.runAsync(
+        `INSERT INTO investments (
+          id, type, asset_type, asset_name, quantity, unit_price, amount, currency, wallet_id, transaction_id,
+          current_value, realized_profit_loss, unrealized_profit_loss, date, note, deleted_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          investment.id,
+          investment.type,
+          investment.assetType,
+          investment.assetName,
+          investment.quantity ?? null,
+          investment.unitPrice ?? null,
+          investment.amount,
+          investment.currency,
+          investment.walletId ?? null,
+          investment.transactionId ?? null,
+          investment.currentValue ?? null,
+          investment.realizedProfitLoss ?? null,
+          investment.unrealizedProfitLoss ?? null,
+          investment.date,
+          investment.note ?? null,
+          investment.deletedAt ?? null,
+          investment.createdAt,
+          investment.updatedAt,
         ]
       );
     }
@@ -1242,6 +1500,8 @@ export function buildTransactionsCsv(transactions: TransactionWithMeta[]) {
     'wallet',
     'to_wallet',
     'category',
+    'parent_category',
+    'subcategory',
     'amount',
     'currency',
     'to_amount',
@@ -1264,6 +1524,8 @@ export function buildTransactionsCsv(transactions: TransactionWithMeta[]) {
       transaction.walletName,
       transaction.toWalletName,
       transaction.categoryName,
+      transaction.parentCategoryName,
+      transaction.subcategoryName,
       transaction.amount,
       transaction.currency,
       transaction.toAmount,
@@ -1291,6 +1553,8 @@ export function buildReportsCsv(
   const monthly = monthlyIncomeExpense(transactions, baseCurrency, 12);
   const expenses = groupTransactionsByCategory(transactions, baseCurrency, 'expense');
   const income = groupTransactionsByCategory(transactions, baseCurrency, 'income');
+  const parentExpenses = groupTransactionsByParentCategory(transactions, baseCurrency, 'expense');
+  const subcategoryExpenses = groupTransactionsBySubcategory(transactions, baseCurrency, 'expense');
   const expenseCurrencies = groupExpensesByCurrency(transactions);
   const distribution = walletDistribution(wallets, baseCurrency);
   const topExpenses = topIndividualExpenses(transactions, baseCurrency, 10);
@@ -1311,6 +1575,12 @@ export function buildReportsCsv(
       row.map(escapeCsv)
     ),
     [['expense_category', 'total'], ...expenses.map((row) => [row.label, row.total])].map((row) =>
+      row.map(escapeCsv)
+    ),
+    [['expense_parent_category', 'total'], ...parentExpenses.map((row) => [row.label, row.total])].map((row) =>
+      row.map(escapeCsv)
+    ),
+    [['expense_subcategory', 'total'], ...subcategoryExpenses.map((row) => [row.label, row.total])].map((row) =>
       row.map(escapeCsv)
     ),
     [['income_category', 'total'], ...income.map((row) => [row.label, row.total])].map((row) =>

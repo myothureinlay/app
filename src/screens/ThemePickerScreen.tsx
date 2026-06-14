@@ -24,6 +24,7 @@ function ThemeCard({
   selected,
   appTheme,
   modeLabel,
+  wide,
   onPress,
 }: {
   option: ThemePreference;
@@ -31,6 +32,7 @@ function ThemeCard({
   selected: boolean;
   appTheme: AppTheme;
   modeLabel: string;
+  wide?: boolean;
   onPress: () => void;
 }) {
   const { theme } = useAppPreferences();
@@ -38,7 +40,7 @@ function ThemeCard({
   const dots = [colors.primary, colors.secondary, colors.accent, colors.success];
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={{ width: '48%', flexGrow: 1 }}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={{ width: wide ? '100%' : '48%', flexGrow: wide ? 0 : 1 }}>
       <Card
         style={{
           gap: 8,
@@ -82,20 +84,46 @@ function ThemeCard({
 export function ThemePickerScreen() {
   const { settings, setThemePreference } = useAppPreferences();
   const { t } = useI18n();
+  const systemOption = themeOptions.find((option) => option.value === 'system');
+  const baseOptions = themeOptions.filter((option) => option.value === 'light' || option.value === 'dark');
+  const presetOptions = themeOptions.filter((option) => !['system', 'light', 'dark'].includes(option.value));
 
   return (
     <Screen>
       <ScreenHeader title={t('settings.themePicker')} subtitle={t('themePicker.subtitle')} />
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-        {themeOptions.map((option) => (
+        {systemOption ? (
+          <ThemeCard
+            key={systemOption.value}
+            option={systemOption.value}
+            label={t(systemOption.labelKey)}
+            selected={settings.theme === systemOption.value}
+            appTheme={previewTheme(systemOption.value)}
+            modeLabel={t('themePicker.autoMode')}
+            wide
+            onPress={() => setThemePreference(systemOption.value as ThemePreference)}
+          />
+        ) : null}
+        {baseOptions.map((option) => (
           <ThemeCard
             key={option.value}
             option={option.value}
             label={t(option.labelKey)}
             selected={settings.theme === option.value}
             appTheme={previewTheme(option.value)}
-            modeLabel={option.value === 'system' ? t('themePicker.autoMode') : previewTheme(option.value).scheme === 'dark' ? t('settings.dark') : t('settings.light')}
+            modeLabel={previewTheme(option.value).scheme === 'dark' ? t('settings.dark') : t('settings.light')}
+            onPress={() => setThemePreference(option.value as ThemePreference)}
+          />
+        ))}
+        {presetOptions.map((option) => (
+          <ThemeCard
+            key={option.value}
+            option={option.value}
+            label={t(option.labelKey)}
+            selected={settings.theme === option.value}
+            appTheme={previewTheme(option.value)}
+            modeLabel={previewTheme(option.value).scheme === 'dark' ? t('settings.dark') : t('settings.light')}
             onPress={() => setThemePreference(option.value as ThemePreference)}
           />
         ))}

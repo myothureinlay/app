@@ -56,7 +56,7 @@ export function AboutScreen() {
     shadowRadius: 10,
     elevation: 1,
   };
-  const versionEntries = ['v1', 'v2', 'v3', 'v4', 'v5', 'v51', 'v6', 'v61'];
+  const versionEntries = ['v1', 'v2', 'v3', 'v4', 'v5', 'v51', 'v6', 'v61', 'v7'];
 
   return (
     <Screen>

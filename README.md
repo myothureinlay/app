@@ -4,6 +4,68 @@ A React Native app built with Expo, TypeScript, and SQLite. It stores your finan
 
 This guide is written for beginners on macOS. The normal Android APK build path uses Expo EAS Build in the cloud, so you do not need to install Android Studio just to create an APK.
 
+## Version 7.0 Mobile V7
+
+- Bottom tabs are exactly Dashboard, Records, Reports, and Investments.
+- Add and Settings moved out of bottom tabs. Dashboard uses a profile/account button for Settings and account tools.
+- Dashboard removes recent transactions and keeps quick add through the floating action button.
+- Records adds grouped ledger history with search, filters, sorting, detail navigation, edit, delete, and restore.
+- Categories now support parent categories and subcategories. Migration preserves old transaction categories as parent categories.
+- Transaction records store original currency, exchange rate at entry time, base amount, parent category, and optional subcategory.
+- Transfers and exchanges stay neutral and are not counted as expenses.
+- Investments adds user-entered investment records and valuations only. No live market prices or fake investment data are used.
+- Reports support parent category and subcategory breakdowns.
+- Theme picker uses the requested grid: System spans both columns, Light/Dark share the next row, presets continue in two columns.
+- iOS metadata is configured. See `docs/IOS_BUILD_NOTES.md` for Apple Developer account limitations.
+
+## Project Structure
+
+```text
+src/
+  components/      Reusable UI controls, cards, charts, pickers, forms, FAB
+  constants/       Build metadata and currency defaults/rates
+  context/         App preferences and finance data providers
+  database/        SQLite schema, migrations, seed data, repository functions
+  i18n/            English, Burmese/Myanmar, Thai, Simplified Chinese
+  logic/           Pure finance, report, category, investment, budget, goal logic
+  navigation/      Root stack, bottom tabs, route types
+  screens/         Dashboard, Records, Reports, Investments, Settings, management screens
+  theme/           Light/dark/system theme presets
+  utils/           Date, file, icon, ID, and money helpers
+```
+
+## Install And Run
+
+```bash
+npm install
+npm run typecheck
+npm test
+npx expo start
+```
+
+Useful validation:
+
+```bash
+npx expo-doctor
+npx expo config --type public --json
+npx expo prebuild --platform android --no-install
+npx expo prebuild --platform ios --no-install
+```
+
+If `android/` or `ios/` is generated only for validation, remove it before committing unless native project files are intentionally adopted.
+
+## SQLite Schema Summary
+
+- `wallets`: local accounts such as Binance USDT, Cash MMK, Cash THB, USD Cash, Bank/Other.
+- `categories`: parent categories and subcategories through `parent_id`.
+- `transactions`: original amount/currency, wallet, destination wallet, exchange rate, base currency amount, parent category, subcategory, soft delete timestamp.
+- `currencies`: active fiat/crypto/custom currency definitions.
+- `budgets`, `goals`, `goal_contributions`: local planning data.
+- `investments`: user-entered buy/sell/income/fee/valuation records with optional current value and P/L fields.
+- `backup_metadata`, `app_settings`, `custom_theme_settings`: local app preferences and backup state.
+
+Current database version is `PRAGMA user_version = 4`.
+
 ## Version 5.1 UX Refinement
 
 - Removes the dedicated bottom Calendar tab; date selection stays inside the Reports date-range modal.
@@ -36,7 +98,7 @@ This guide is written for beginners on macOS. The normal Android APK build path 
 
 Version 3 includes a safe SQLite migration to `PRAGMA user_version = 3`. It adds currencies, budgets, goals, backup metadata, custom theme support, and remove timestamps without wiping existing wallets, categories, or transactions.
 
-Version 4 is a UX polish pass and does not add a new SQLite migration. Before installing a test APK over an older APK, open Settings and create a full JSON backup if the old app version supports it. If not, keep a copy of the old APK installed on one device until you confirm the upgraded ledger opens correctly.
+Version 4 is a UX polish pass and does not add a new SQLite migration. Version 7 upgrades the database to `user_version = 4` by adding category hierarchy fields and investment records without wiping existing wallets, categories, or transactions. Before installing a test APK over an older APK, open Settings and create a full JSON backup if the old app version supports it. If not, keep a copy of the old APK installed on one device until you confirm the upgraded ledger opens correctly.
 
 ## Fastest path for beginners
 

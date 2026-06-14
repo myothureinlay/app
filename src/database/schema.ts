@@ -20,15 +20,28 @@ async function createIndexes(db: SQLiteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_transactions_currency ON transactions(currency);
     CREATE INDEX IF NOT EXISTS idx_transactions_wallet ON transactions(wallet_id);
     CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id);
+    CREATE INDEX IF NOT EXISTS idx_transactions_parent_category ON transactions(parent_category_id);
+    CREATE INDEX IF NOT EXISTS idx_transactions_subcategory ON transactions(subcategory_id);
     CREATE INDEX IF NOT EXISTS idx_transactions_deleted_at ON transactions(deleted_at);
     CREATE INDEX IF NOT EXISTS idx_categories_type ON categories(type);
+    CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
     CREATE INDEX IF NOT EXISTS idx_categories_archived ON categories(is_archived);
     CREATE INDEX IF NOT EXISTS idx_wallets_archived ON wallets(is_archived);
     CREATE INDEX IF NOT EXISTS idx_currencies_active ON currencies(is_active);
     CREATE INDEX IF NOT EXISTS idx_budgets_removed ON budgets(is_removed);
     CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);
     CREATE INDEX IF NOT EXISTS idx_goal_contributions_goal ON goal_contributions(goal_id);
+    CREATE INDEX IF NOT EXISTS idx_investments_date ON investments(date);
+    CREATE INDEX IF NOT EXISTS idx_investments_asset_type ON investments(asset_type);
+    CREATE INDEX IF NOT EXISTS idx_investments_deleted_at ON investments(deleted_at);
   `);
+}
+
+async function addColumnIfMissing(db: SQLiteDatabase, tableName: string, columnName: string, definition: string) {
+  const columns = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${tableName})`);
+  if (!columns.some((column) => column.name === columnName)) {
+    await db.execAsync(`ALTER TABLE ${tableName} ADD COLUMN ${definition};`);
+  }
 }
 
 async function createFeatureTables(db: SQLiteDatabase) {
@@ -123,6 +136,29 @@ async function createFeatureTables(db: SQLiteDatabase) {
       card_style TEXT NOT NULL CHECK (card_style IN ('flat', 'soft', 'elevated')),
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS investments (
+      id TEXT PRIMARY KEY NOT NULL,
+      type TEXT NOT NULL CHECK (type IN ('buy', 'sell', 'income', 'fee', 'valuation')),
+      asset_type TEXT NOT NULL CHECK (asset_type IN ('stock', 'crypto', 'gold', 'fund', 'bond', 'cash_savings', 'real_estate', 'collectible', 'other')),
+      asset_name TEXT NOT NULL,
+      quantity REAL,
+      unit_price REAL,
+      amount REAL NOT NULL CHECK (amount >= 0),
+      currency TEXT NOT NULL,
+      wallet_id TEXT,
+      transaction_id TEXT,
+      current_value REAL,
+      realized_profit_loss REAL,
+      unrealized_profit_loss REAL,
+      date TEXT NOT NULL,
+      note TEXT,
+      deleted_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (wallet_id) REFERENCES wallets(id),
+      FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+    );
   `);
 }
 
@@ -151,6 +187,7 @@ async function createSchemaV3(db: SQLiteDatabase) {
 
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY NOT NULL,
+      parent_id TEXT,
       name TEXT NOT NULL,
       type TEXT NOT NULL CHECK (${categoryTypeCheck}),
       icon TEXT NOT NULL,
@@ -183,18 +220,22 @@ async function createSchemaV3(db: SQLiteDatabase) {
       fee_amount REAL NOT NULL DEFAULT 0 CHECK (fee_amount >= 0),
       fee_currency TEXT,
       metadata TEXT,
+      parent_category_id TEXT,
+      subcategory_id TEXT,
       deleted_at TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (wallet_id) REFERENCES wallets(id),
       FOREIGN KEY (to_wallet_id) REFERENCES wallets(id),
-      FOREIGN KEY (category_id) REFERENCES categories(id)
+      FOREIGN KEY (category_id) REFERENCES categories(id),
+      FOREIGN KEY (parent_category_id) REFERENCES categories(id),
+      FOREIGN KEY (subcategory_id) REFERENCES categories(id)
     );
   `);
 
   await createFeatureTables(db);
   await createIndexes(db);
-  await db.execAsync('PRAGMA user_version = 3;');
+  await db.execAsync('PRAGMA user_version = 4;');
 }
 
 async function migrateV1ToV2(db: SQLiteDatabase) {
@@ -376,6 +417,19 @@ async function migrateV2ToV3(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA foreign_keys = ON; PRAGMA user_version = 3;');
 }
 
+async function migrateV3ToV4(db: SQLiteDatabase) {
+  await db.execAsync('PRAGMA foreign_keys = OFF;');
+
+  await addColumnIfMissing(db, 'categories', 'parent_id', 'parent_id TEXT');
+  await addColumnIfMissing(db, 'transactions', 'parent_category_id', 'parent_category_id TEXT');
+  await addColumnIfMissing(db, 'transactions', 'subcategory_id', 'subcategory_id TEXT');
+  await db.runAsync('UPDATE transactions SET parent_category_id = category_id WHERE parent_category_id IS NULL AND category_id IS NOT NULL');
+
+  await createFeatureTables(db);
+  await createIndexes(db);
+  await db.execAsync('PRAGMA foreign_keys = ON; PRAGMA user_version = 4;');
+}
+
 export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA foreign_keys = ON;');
 
@@ -394,5 +448,10 @@ export async function migrateDatabase(db: SQLiteDatabase) {
   const afterV2 = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   if ((afterV2?.user_version ?? currentVersion) < 3) {
     await migrateV2ToV3(db);
+  }
+
+  const afterV3 = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+  if ((afterV3?.user_version ?? currentVersion) < 4) {
+    await migrateV3ToV4(db);
   }
 }
