@@ -1,5 +1,7 @@
 export type RootStackParamList = {
   MainTabs: undefined;
+  AddTransaction: { initialType?: import('../types').TransactionType } | undefined;
+  Settings: undefined;
   ManageWallets: undefined;
   ManageCategories: undefined;
   TransactionDetail: { transactionId: string };
@@ -17,7 +19,7 @@ export type RootStackParamList = {
 
 export type RootTabParamList = {
   Dashboard: undefined;
-  Add: undefined;
+  Records: undefined;
   Reports: undefined;
-  Settings: undefined;
+  Investments: undefined;
 };

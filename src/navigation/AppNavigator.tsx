@@ -17,12 +17,15 @@ import { ManageCategoriesScreen } from '../screens/ManageCategoriesScreen';
 import { ManageCurrenciesScreen } from '../screens/ManageCurrenciesScreen';
 import { ManageWalletsScreen } from '../screens/ManageWalletsScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+import { InvestmentsScreen } from '../screens/InvestmentsScreen';
+import { RecordsScreen } from '../screens/RecordsScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ThemePickerScreen } from '../screens/ThemePickerScreen';
 import { TransactionDetailScreen } from '../screens/TransactionDetailScreen';
 import { UserManualScreen } from '../screens/UserManualScreen';
 import { iconForStyle } from '../utils/icons';
+import { iconForTab, mainTabConfig } from './tabConfig';
 import type { RootStackParamList, RootTabParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -56,22 +59,22 @@ function MainTabs() {
           fontSize: 11,
         },
         tabBarIcon: ({ color, size }) => {
-          const icon =
-            route.name === 'Dashboard'
-              ? 'grid-outline'
-              : route.name === 'Add'
-                ? 'add-circle-outline'
-                : route.name === 'Reports'
-                  ? 'bar-chart-outline'
-                  : 'settings-outline';
+          const icon = iconForTab(route.name);
           return <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={size} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: t('nav.dashboard') }} />
-      <Tab.Screen name="Add" component={AddTransactionScreen} options={{ title: t('nav.add') }} />
-      <Tab.Screen name="Reports" component={ReportsScreen} options={{ title: t('nav.reports') }} />
-      <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: t('nav.settings') }} />
+      {mainTabConfig.map((tab) => {
+        const component =
+          tab.name === 'Dashboard'
+            ? DashboardScreen
+            : tab.name === 'Records'
+              ? RecordsScreen
+              : tab.name === 'Reports'
+                ? ReportsScreen
+                : InvestmentsScreen;
+        return <Tab.Screen key={tab.name} name={tab.name} component={component} options={{ title: t(tab.titleKey) }} />;
+      })}
     </Tab.Navigator>
   );
 }
@@ -109,6 +112,8 @@ export function AppNavigator() {
         }}
       >
         <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+        <Stack.Screen name="AddTransaction" component={AddTransactionScreen} options={{ title: t('transaction.title') }} />
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: t('nav.settings') }} />
         <Stack.Screen name="ManageWallets" component={ManageWalletsScreen} options={{ title: t('nav.wallets') }} />
         <Stack.Screen
           name="ManageCategories"

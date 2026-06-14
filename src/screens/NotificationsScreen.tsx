@@ -19,7 +19,7 @@ type NotificationTarget =
   | 'Dashboard'
   | 'Reports'
   | 'Settings'
-  | 'Add'
+  | 'AddTransaction'
   | 'Budgets'
   | 'Goals'
   | 'GoogleBackup'
@@ -175,7 +175,7 @@ export function NotificationsScreen() {
           message: t('notifications.transactionReminderBody'),
           type: 'transaction' as const,
           createdAt: new Date().toISOString(),
-          targetScreen: 'Add' as const,
+          targetScreen: 'AddTransaction' as const,
           icon: 'receipt-outline',
           color: theme.colors.secondary,
           section: 'today' as NotificationSection,
@@ -239,7 +239,7 @@ export function NotificationsScreen() {
       navigation.navigate('TransactionDetail', { transactionId: item.targetId });
       return;
     }
-    if (['Dashboard', 'Reports', 'Settings', 'Add'].includes(item.targetScreen)) {
+    if (['Dashboard', 'Reports'].includes(item.targetScreen)) {
       navigation.navigate('MainTabs', { screen: item.targetScreen });
       return;
     }

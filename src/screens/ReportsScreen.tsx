@@ -32,6 +32,8 @@ import {
   calculateReportSummary,
   groupExpensesByCurrency,
   groupTransactionsByCategory,
+  groupTransactionsByParentCategory,
+  groupTransactionsBySubcategory,
   historyByTypes,
   monthlyIncomeExpense,
   topIndividualExpenses,
@@ -84,6 +86,8 @@ export function ReportsScreen() {
   const [customTo, setCustomTo] = useState(new Date().toISOString().slice(0, 10));
   const [currency, setCurrency] = useState<'all' | CurrencyCode>('all');
   const [categoryId, setCategoryId] = useState('all');
+  const [parentCategoryId, setParentCategoryId] = useState('all');
+  const [subcategoryId, setSubcategoryId] = useState('all');
   const [walletId, setWalletId] = useState('all');
   const [typeFilter, setTypeFilter] = useState<'all' | TransactionType>('all');
   const [dateSheetVisible, setDateSheetVisible] = useState(false);
@@ -91,7 +95,19 @@ export function ReportsScreen() {
   const [exportVisible, setExportVisible] = useState(false);
   const [customizeVisible, setCustomizeVisible] = useState(false);
   const currencyOptions = currencies.length > 0 ? currencies.filter((item) => item.isActive).map((item) => item.code) : ['USD'];
-  const activeFilterCount = [currency !== 'all', categoryId !== 'all', walletId !== 'all', typeFilter !== 'all'].filter(Boolean).length;
+  const parentCategories = categories.filter((category) => !category.parentId && !category.removedAt);
+  const subcategoryOptions = categories.filter((category) => {
+    if (!category.parentId || category.removedAt) return false;
+    return parentCategoryId === 'all' || category.parentId === parentCategoryId;
+  });
+  const activeFilterCount = [
+    currency !== 'all',
+    categoryId !== 'all',
+    parentCategoryId !== 'all',
+    subcategoryId !== 'all',
+    walletId !== 'all',
+    typeFilter !== 'all',
+  ].filter(Boolean).length;
   const reportWidgets = useMemo<WidgetDescriptor[]>(
     () => [
       { id: 'monthlySummary', title: t('reports.monthlySummary'), icon: 'calendar-outline', color: theme.colors.primary },
@@ -132,19 +148,26 @@ export function ReportsScreen() {
         if (!isWithinDateRange(transaction.date, activeRange)) return false;
         if (currency !== 'all' && transaction.currency !== currency) return false;
         if (categoryId !== 'all' && transaction.categoryId !== categoryId) return false;
+        if (parentCategoryId !== 'all' && (transaction.parentCategoryId ?? transaction.categoryId) !== parentCategoryId) return false;
+        if (subcategoryId !== 'all') {
+          if (subcategoryId === 'none' && transaction.subcategoryId) return false;
+          if (subcategoryId !== 'none' && transaction.subcategoryId !== subcategoryId) return false;
+        }
         if (typeFilter !== 'all' && transaction.type !== typeFilter) return false;
         if (walletId !== 'all' && transaction.walletId !== walletId && transaction.toWalletId !== walletId) {
           return false;
         }
         return true;
       }),
-    [transactions, activeRange, currency, categoryId, walletId, typeFilter]
+    [transactions, activeRange, currency, categoryId, parentCategoryId, subcategoryId, walletId, typeFilter]
   );
 
   const summary = calculateReportSummary(filtered, settings.baseCurrency);
   const trend = monthlyIncomeExpense(filtered, settings.baseCurrency, 12);
   const expenseByCategory = groupTransactionsByCategory(filtered, settings.baseCurrency, 'expense');
   const incomeByCategory = groupTransactionsByCategory(filtered, settings.baseCurrency, 'income');
+  const expenseByParentCategory = groupTransactionsByParentCategory(filtered, settings.baseCurrency, 'expense');
+  const expenseBySubcategory = groupTransactionsBySubcategory(filtered, settings.baseCurrency, 'expense');
   const expenseByCurrency = groupExpensesByCurrency(filtered);
   const walletRows = walletDistribution(wallets, settings.baseCurrency);
   const topExpenses = topIndividualExpenses(filtered, settings.baseCurrency, 8);
@@ -170,10 +193,19 @@ export function ReportsScreen() {
   const rangeLabel = formatDateRangeLabel(activeRange, locale);
   const activeRangeName = rangeOptions.find((option) => option.value === rangeMode)?.label ?? rangeLabel;
   const categoryLabel = categoryId === 'all' ? t('common.all') : categories.find((category) => category.id === categoryId)?.name ?? t('common.all');
+  const parentCategoryLabel = parentCategoryId === 'all' ? t('common.all') : categories.find((category) => category.id === parentCategoryId)?.name ?? t('common.all');
+  const subcategoryLabel =
+    subcategoryId === 'all'
+      ? t('common.all')
+      : subcategoryId === 'none'
+        ? t('category.noSubcategory')
+        : categories.find((category) => category.id === subcategoryId)?.name ?? t('common.all');
   const walletLabel = walletId === 'all' ? t('common.all') : wallets.find((wallet) => wallet.id === walletId)?.name ?? t('common.all');
   const typeLabel = typeFilter === 'all' ? t('common.all') : t(`types.${typeFilter}`);
   const filterSummary = [
     `${t('common.currency')}: ${currency === 'all' ? t('common.all') : currency}`,
+    `${t('category.parentCategory')}: ${parentCategoryLabel}`,
+    `${t('category.subcategory')}: ${subcategoryLabel}`,
     `${t('common.category')}: ${categoryLabel}`,
     `${t('common.wallet')}: ${walletLabel}`,
     `${t('transaction.type')}: ${typeLabel}`,
@@ -203,6 +235,14 @@ export function ReportsScreen() {
       csvLine([t('common.category'), t('common.total')]),
       ...expenseByCategory.map((row) => csvLine([row.label, row.total])),
       '',
+      csvLine([t('reports.expenseByParentCategory')]),
+      csvLine([t('category.parentCategory'), t('common.total')]),
+      ...expenseByParentCategory.map((row) => csvLine([row.label, row.total])),
+      '',
+      csvLine([t('reports.expenseBySubcategory')]),
+      csvLine([t('category.subcategory'), t('common.total')]),
+      ...expenseBySubcategory.map((row) => csvLine([row.label, row.total])),
+      '',
       csvLine([t('reports.topIndividualExpenses')]),
       csvLine([t('common.date'), t('transaction.title'), t('common.amount')]),
       ...topExpenses.map((row) => csvLine([row.date, row.title, row.amount])),
@@ -212,6 +252,8 @@ export function ReportsScreen() {
     activeRangeName,
     activeReportWidgets,
     expenseByCategory,
+    expenseByParentCategory,
+    expenseBySubcategory,
     filterSummary,
     rangeLabel,
     settings.baseCurrency,
@@ -307,11 +349,17 @@ export function ReportsScreen() {
                   icon="pie-chart-outline"
                   actionLabel={t('empty.addFirstTransaction')}
                   actionIcon="add-circle-outline"
-                  onAction={() => navigation.navigate('Add' as never)}
+                  onAction={() => navigation.navigate('AddTransaction' as never)}
                 />
               ) : (
                 <DonutChart data={expenseByCategory.map((row) => ({ ...row, value: row.total }))} />
               )}
+            </ChartCard>
+            <ChartCard title={t('reports.expenseByParentCategory')}>
+              <HorizontalBarChart data={expenseByParentCategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
+            </ChartCard>
+            <ChartCard title={t('reports.expenseBySubcategory')}>
+              <HorizontalBarChart data={expenseBySubcategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
             </ChartCard>
             <ChartCard title={t('reports.topExpenseCategories')}>
               <HorizontalBarChart data={expenseByCategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
@@ -414,7 +462,7 @@ export function ReportsScreen() {
                 icon="receipt-outline"
                 actionLabel={t('empty.addFirstTransaction')}
                 actionIcon="add-circle-outline"
-                onAction={() => navigation.navigate('Add' as never)}
+                onAction={() => navigation.navigate('AddTransaction' as never)}
               />
             ) : (
               filtered.slice(0, 12).map((transaction) => (
@@ -596,6 +644,8 @@ export function ReportsScreen() {
               onPress={() => {
                 setCurrency('all');
                 setCategoryId('all');
+                setParentCategoryId('all');
+                setSubcategoryId('all');
                 setWalletId('all');
                 setTypeFilter('all');
               }}
@@ -611,6 +661,43 @@ export function ReportsScreen() {
           onChange={setCurrency}
           options={[{ label: t('common.all'), value: 'all', icon: 'layers-outline' }, ...currencyOptions.map((item) => ({ label: item, value: item, icon: 'cash-outline', badge: getCurrencyBadge(item) }))]}
           icon="cash-outline"
+          searchable
+        />
+        <PickerField
+          label={t('category.parentCategory')}
+          value={parentCategoryId}
+          onChange={(value) => {
+            setParentCategoryId(value);
+            setSubcategoryId('all');
+          }}
+          options={[
+            { label: t('common.all'), value: 'all', icon: 'pricetags-outline' },
+            ...parentCategories.map((category) => ({
+              label: category.name,
+              value: category.id,
+              icon: category.icon,
+              color: category.color,
+            })),
+          ]}
+          icon="pricetags-outline"
+          searchable
+        />
+        <PickerField
+          label={t('category.subcategory')}
+          value={subcategoryId}
+          onChange={setSubcategoryId}
+          options={[
+            { label: t('common.all'), value: 'all', icon: 'layers-outline' },
+            { label: t('category.noSubcategory'), value: 'none', icon: 'remove-circle-outline' },
+            ...subcategoryOptions.map((category) => ({
+              label: category.name,
+              value: category.id,
+              icon: category.icon,
+              color: category.color,
+              detail: categories.find((parent) => parent.id === category.parentId)?.name,
+            })),
+          ]}
+          icon="pricetag-outline"
           searchable
         />
         <PickerField

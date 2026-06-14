@@ -40,23 +40,26 @@ function fromIsoDate(value?: string) {
 
 interface TransactionFormProps {
   initialTransaction?: Transaction | null;
+  initialType?: TransactionType;
   submitLabel: string;
   onSubmit: (input: CreateTransactionInput) => Promise<void>;
 }
 
-export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: TransactionFormProps) {
+export function TransactionForm({ initialTransaction, initialType, submitLabel, onSubmit }: TransactionFormProps) {
   const { theme, settings, setBaseCurrency } = useAppPreferences();
   const { wallets, categories, currencies } = useFinance();
   const { t } = useI18n();
 
   const firstWallet = wallets[0];
-  const [type, setType] = useState<TransactionType>(initialTransaction?.type ?? 'expense');
+  const [type, setType] = useState<TransactionType>(initialTransaction?.type ?? initialType ?? 'expense');
   const [amount, setAmount] = useState(initialTransaction ? String(initialTransaction.amount) : '');
   const [currency, setCurrency] = useState<CurrencyCode>(initialTransaction?.currency ?? firstWallet?.currency ?? 'USDT');
   const [walletId, setWalletId] = useState(initialTransaction?.walletId ?? firstWallet?.id ?? '');
   const [toWalletId, setToWalletId] = useState(initialTransaction?.toWalletId ?? '');
   const [receivedAmount, setReceivedAmount] = useState(initialTransaction?.toAmount ? String(initialTransaction.toAmount) : '');
   const [categoryId, setCategoryId] = useState(initialTransaction?.categoryId ?? '');
+  const [parentCategoryId, setParentCategoryId] = useState(initialTransaction?.parentCategoryId ?? '');
+  const [subcategoryId, setSubcategoryId] = useState(initialTransaction?.subcategoryId ?? '');
   const [date, setDate] = useState(fromIsoDate(initialTransaction?.date));
   const [note, setNote] = useState(initialTransaction?.note ?? '');
   const [counterparty, setCounterparty] = useState(initialTransaction?.counterparty ?? '');
@@ -71,6 +74,7 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
   const supportsFees = transactionSupportsFees(type);
   const supportsCounterparty = transactionSupportsCounterparty(type);
   const availableCategories = categories.filter((category) => category.type === categoryTypeForTransaction(type));
+  const parentCategories = availableCategories.filter((category) => !category.parentId);
   const amountNumber = parseNumber(amount);
   const exchangeRateNumber = parseNumber(exchangeRate) || getRateToBase(baseCurrency, currency);
   const baseAmount = amountNumber * exchangeRateNumber;
@@ -98,11 +102,27 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
   }, [currency, baseCurrency, initialTransaction]);
 
   useEffect(() => {
-    const firstCategory = availableCategories[0];
-    if (!categoryId || !availableCategories.some((category) => category.id === categoryId)) {
-      setCategoryId(firstCategory?.id ?? '');
+    const category = availableCategories.find((item) => item.id === categoryId);
+    const selectedParent = parentCategoryId ? availableCategories.find((item) => item.id === parentCategoryId) : null;
+    const firstParent = parentCategories[0];
+
+    if (category?.parentId && !parentCategoryId) {
+      setParentCategoryId(category.parentId);
+      setSubcategoryId(category.id);
+      return;
     }
-  }, [type, categories.length]);
+
+    if (category && !category.parentId && !parentCategoryId) {
+      setParentCategoryId(category.id);
+      return;
+    }
+
+    if (!selectedParent) {
+      setParentCategoryId(firstParent?.id ?? '');
+      setSubcategoryId('');
+      setCategoryId(firstParent?.id ?? '');
+    }
+  }, [type, categories.length, categoryId, parentCategoryId, parentCategories.length]);
 
   useEffect(() => {
     if (needsDestination) {
@@ -142,6 +162,8 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
       toAmount: needsDestination ? parseNumber(receivedAmount) : null,
       toCurrency: needsDestination ? toWallet?.currency ?? null : null,
       categoryId: categoryId || null,
+      parentCategoryId: parentCategoryId || categoryId || null,
+      subcategoryId: subcategoryId || null,
       date: toIsoDate(date),
       note,
       exchangeRate: exchangeRateNumber,
@@ -219,7 +241,16 @@ export function TransactionForm({ initialTransaction, submitLabel, onSubmit }: T
             />
           </>
         ) : (
-          <CategoryPicker label={t('common.category')} value={categoryId} onChange={setCategoryId} categories={availableCategories} />
+          <CategoryPicker
+            label={t('common.category')}
+            value={categoryId}
+            onChange={setCategoryId}
+            categories={availableCategories}
+            parentValue={parentCategoryId}
+            subcategoryValue={subcategoryId}
+            onParentChange={setParentCategoryId}
+            onSubcategoryChange={setSubcategoryId}
+          />
         )}
 
         {supportsCounterparty ? (
