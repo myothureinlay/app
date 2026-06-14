@@ -5,13 +5,13 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
+import { BottomSheet } from '../components/BottomSheet';
 import { Card } from '../components/Card';
 import { ChartCard, LineTrendChart } from '../components/ChartCard';
 import { EmptyState } from '../components/EmptyState';
 import { PickerField } from '../components/PickerField';
 import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
-import { TransactionItem } from '../components/TransactionItem';
 import { WalletCard } from '../components/WalletCard';
 import { WidgetCustomizeSheet, visibleWidgets, type WidgetDescriptor } from '../components/WidgetCustomizeSheet';
 import { getCurrencyBadge } from '../constants/currencies';
@@ -33,7 +33,6 @@ const dashboardWidgetIds = [
   'goals',
   'walletBalances',
   'loanDebt',
-  'recentTransactions',
 ] as const;
 
 type DashboardWidgetId = (typeof dashboardWidgetIds)[number];
@@ -108,13 +107,10 @@ export function DashboardScreen() {
   const { isReady, wallets, currencies, budgets, goals, transactions } = useFinance();
   const { t } = useI18n();
   const [customizeVisible, setCustomizeVisible] = useState(false);
+  const [accountVisible, setAccountVisible] = useState(false);
 
   const monthlyTransactions = transactions.filter(isThisMonth);
-  const filteredTransactions = monthlyTransactions.filter((transaction) =>
-    settings.dashboardCurrencyFilter === 'all' ? true : transaction.currency === settings.dashboardCurrencyFilter
-  );
   const summary = calculateReportSummary(monthlyTransactions, settings.baseCurrency);
-  const recent = filteredTransactions.slice(0, 6);
   const trend = monthlyIncomeExpense(transactions, settings.baseCurrency, 6);
   const netWorth = totalWalletValue(wallets, settings.baseCurrency) + summary.receivableMovement - summary.liabilityMovement;
   const activeBudgetCount = budgets.length;
@@ -147,7 +143,6 @@ export function DashboardScreen() {
       { id: 'goals', title: t('dashboard.goals'), icon: 'flag-outline', color: theme.colors.accent },
       { id: 'walletBalances', title: t('dashboard.walletBalances'), icon: 'card-outline', color: theme.colors.success },
       { id: 'loanDebt', title: t('dashboard.loanSnapshot'), icon: 'swap-vertical-outline', color: theme.colors.warning },
-      { id: 'recentTransactions', title: t('dashboard.recentTransactions'), icon: 'receipt-outline', color: theme.colors.primary },
     ],
     [t, theme]
   );
@@ -195,16 +190,32 @@ export function DashboardScreen() {
             />
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
               <View style={{ flex: 1, gap: 5 }}>
-                <View
-                  style={{
-                    alignSelf: 'flex-start',
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 999,
-                    backgroundColor: '#FFFFFF22',
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>{t('dashboard.v6Label')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setAccountVisible(true)}
+                    style={({ pressed }) => ({
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      backgroundColor: pressed ? '#FFFFFF30' : '#FFFFFF22',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    })}
+                  >
+                    <Ionicons name="person-circle-outline" size={24} color="#FFFFFF" />
+                  </Pressable>
+                  <View
+                    style={{
+                      alignSelf: 'flex-start',
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 999,
+                      backgroundColor: '#FFFFFF22',
+                    }}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>{t('dashboard.v7Label')}</Text>
+                  </View>
                 </View>
                 <Text style={{ color: '#FFFFFFC8', fontSize: 13, fontWeight: '800' }}>{t('dashboard.greeting')}</Text>
                 <Text style={{ color: '#FFFFFF', fontSize: 27, fontWeight: '900' }}>{t('dashboard.title')}</Text>
@@ -299,7 +310,7 @@ export function DashboardScreen() {
           <>
             <SectionHeader
               title={t('dashboard.budgets')}
-              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('Budgets' as never)} style={{ width: 42, paddingHorizontal: 0 }} />}
+              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('Budgets' as never)} style={{ width: 44, minHeight: 44, borderRadius: 22, paddingHorizontal: 0 }} />}
             />
             {budgets.length === 0 ? (
               <EmptyState
@@ -328,7 +339,7 @@ export function DashboardScreen() {
           <>
             <SectionHeader
               title={t('dashboard.goals')}
-              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('Goals' as never)} style={{ width: 42, paddingHorizontal: 0 }} />}
+              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('Goals' as never)} style={{ width: 44, minHeight: 44, borderRadius: 22, paddingHorizontal: 0 }} />}
             />
             {goals.length === 0 ? (
               <EmptyState
@@ -355,7 +366,7 @@ export function DashboardScreen() {
           <>
             <SectionHeader
               title={t('dashboard.walletBalances')}
-              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('ManageWallets' as never)} style={{ width: 42, paddingHorizontal: 0 }} />}
+              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('ManageWallets' as never)} style={{ width: 44, minHeight: 44, borderRadius: 22, paddingHorizontal: 0 }} />}
             />
             {wallets.length === 0 ? (
               <EmptyState
@@ -367,9 +378,14 @@ export function DashboardScreen() {
                 onAction={() => navigation.navigate('ManageWallets' as never)}
               />
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 12, paddingHorizontal: 2, paddingRight: 18 }}
+                style={{ marginHorizontal: -2 }}
+              >
                 {wallets.slice(0, 6).map((wallet) => (
-                  <View key={wallet.id} style={{ width: 270 }}>
+                  <View key={wallet.id} style={{ width: 282 }}>
                     <WalletCard wallet={wallet} />
                   </View>
                 ))}
@@ -395,35 +411,6 @@ export function DashboardScreen() {
                 color={theme.colors.warning}
               />
             </View>
-          </>
-        );
-      case 'recentTransactions':
-        return (
-          <>
-            <SectionHeader
-              title={t('dashboard.recentTransactions')}
-              action={<AppButton title="" icon="add-outline" onPress={() => navigation.navigate('Add' as never)} style={{ width: 42, paddingHorizontal: 0 }} />}
-            />
-            {recent.length === 0 ? (
-              <EmptyState
-                title={t('empty.title')}
-                body={t('empty.transactions')}
-                icon="receipt-outline"
-                actionLabel={t('empty.addFirstTransaction')}
-                actionIcon="add-circle-outline"
-                onAction={() => navigation.navigate('Add' as never)}
-              />
-            ) : (
-              <Card>
-                {recent.map((transaction) => (
-                  <TransactionItem
-                    key={transaction.id}
-                    transaction={transaction}
-                    onPress={() => navigation.navigate('TransactionDetail' as never, { transactionId: transaction.id } as never)}
-                  />
-                ))}
-              </Card>
-            )}
           </>
         );
       default:
@@ -465,6 +452,35 @@ export function DashboardScreen() {
         onChange={(dashboardWidgets) => updateSettings({ dashboardWidgets })}
         onClose={() => setCustomizeVisible(false)}
       />
+      <BottomSheet visible={accountVisible} title={t('account.title')} onClose={() => setAccountVisible(false)}>
+        {[
+          ['Settings', t('nav.settings'), 'settings-outline'],
+          ['ManageCurrencies', t('settings.manageCurrencies'), 'cash-outline'],
+          ['ManageCategories', t('settings.manageCategories'), 'pricetags-outline'],
+          ['GoogleBackup', t('settings.backupRestore'), 'archive-outline'],
+          ['UserManual', t('settings.userManual'), 'book-outline'],
+          ['Notifications', t('settings.notifications'), 'notifications-outline'],
+          ['About', t('settings.aboutApp'), 'information-circle-outline'],
+          ['ThemePicker', t('settings.themePicker'), 'color-palette-outline'],
+          ['LanguagePicker', t('settings.languagePicker'), 'language-outline'],
+        ].map(([route, label, icon]) => (
+          <AppButton
+            key={route}
+            title={label}
+            icon={icon}
+            variant="secondary"
+            onPress={() => {
+              setAccountVisible(false);
+              navigation.navigate(route as never);
+            }}
+          />
+        ))}
+        <Card style={{ gap: 4 }}>
+          <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '900' }}>{t('about.buildLabelTitle')}</Text>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('about.buildLabel')}</Text>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{t('settings.version')}</Text>
+        </Card>
+      </BottomSheet>
     </Screen>
   );
 }

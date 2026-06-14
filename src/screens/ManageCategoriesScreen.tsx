@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
@@ -15,6 +15,7 @@ import { TextField } from '../components/TextField';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
+import { buildCategoryTree } from '../logic/categories';
 import { categoryTypes } from '../logic/ledger';
 import type { Category, CategoryType } from '../types';
 
@@ -95,17 +96,38 @@ export function ManageCategoriesScreen() {
   const [editing, setEditing] = useState<Category | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<CategoryType>('expense');
+  const [parentId, setParentId] = useState('none');
   const [color, setColor] = useState(categoryColors[1]);
   const [icon, setIcon] = useState(iconByType.expense);
   const [iconSearch, setIconSearch] = useState('');
+  const [search, setSearch] = useState('');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [removeTarget, setRemoveTarget] = useState<Category | null>(null);
   const [formVisible, setFormVisible] = useState(false);
   const filteredIcons = categoryIcons.filter((item) => item.includes(iconSearch.trim().toLowerCase()));
+  const parentOptions = categories
+    .filter((category) => !category.parentId && !category.removedAt && category.id !== editing?.id)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  const tree = useMemo(() => buildCategoryTree(categories), [categories]);
+  const filteredTree = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return tree;
+    return tree
+      .map((parent) => {
+        const children = parent.children.filter((child) => child.name.toLowerCase().includes(query));
+        if (parent.name.toLowerCase().includes(query) || children.length > 0) {
+          return { ...parent, children };
+        }
+        return null;
+      })
+      .filter(Boolean) as typeof tree;
+  }, [search, tree]);
 
   useEffect(() => {
     if (!editing) return;
     setName(editing.name);
     setType(editing.type);
+    setParentId(editing.parentId ?? 'none');
     setColor(editing.color);
     setIcon(editing.icon);
   }, [editing]);
@@ -114,6 +136,7 @@ export function ManageCategoriesScreen() {
     setEditing(null);
     setName('');
     setType('expense');
+    setParentId('none');
     setColor(categoryColors[1]);
     setIcon(iconByType.expense);
     setIconSearch('');
@@ -124,8 +147,15 @@ export function ManageCategoriesScreen() {
     reset();
   };
 
-  const openAdd = () => {
+  const openAdd = (nextParentId = 'none') => {
     reset();
+    const parent = parentOptions.find((category) => category.id === nextParentId);
+    if (parent) {
+      setParentId(parent.id);
+      setType(parent.type);
+      setColor(parent.color);
+      setIcon(parent.icon);
+    }
     setFormVisible(true);
   };
 
@@ -133,6 +163,7 @@ export function ManageCategoriesScreen() {
     setEditing(category);
     setName(category.name);
     setType(category.type);
+    setParentId(category.parentId ?? 'none');
     setColor(category.color);
     setIcon(category.icon);
     setFormVisible(true);
@@ -144,11 +175,13 @@ export function ManageCategoriesScreen() {
       return;
     }
 
+    const nextParentId = parentId === 'none' ? null : parentId;
     if (editing) {
       await editCategory({
         id: editing.id,
         name: name.trim(),
         type,
+        parentId: nextParentId,
         color,
         icon,
       });
@@ -156,6 +189,7 @@ export function ManageCategoriesScreen() {
       await addCategory({
         name: name.trim(),
         type,
+        parentId: nextParentId,
         color,
         icon,
       });
@@ -168,57 +202,136 @@ export function ManageCategoriesScreen() {
     <Screen>
       <ScreenHeader
         title={t('nav.categories')}
-        subtitle={t('manage.defaultsSeeded')}
-        action={<AppButton title="" icon="add-outline" onPress={openAdd} style={{ width: 44, paddingHorizontal: 0 }} />}
+        subtitle={t('manage.categoryHierarchySubtitle')}
+        action={<AppButton title="" icon="add-outline" onPress={() => openAdd()} style={{ width: 44, minHeight: 44, borderRadius: 22, paddingHorizontal: 0 }} />}
       />
 
+      <TextField label={t('common.search')} value={search} onChangeText={setSearch} placeholder={t('manage.searchCategories')} />
+
       <View style={{ gap: 10 }}>
-        {categories.length === 0 ? (
+        {filteredTree.length === 0 ? (
           <EmptyState
             title={t('empty.title')}
             body={t('empty.categories')}
             icon="pricetags-outline"
             actionLabel={t('manage.addCategory')}
             actionIcon="add-circle-outline"
-            onAction={openAdd}
+            onAction={() => openAdd()}
           />
         ) : (
-          categories.map((category) => (
-            <Pressable key={category.id} onPress={() => openEdit(category)}>
-              <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: theme.radius.md,
-                    backgroundColor: `${category.color}22`,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons name={category.icon as never} size={20} color={category.color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }}>{category.name}</Text>
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{t(`categoryTypes.${category.type}`)}</Text>
-                </View>
-                <AppButton
-                  title=""
-                  icon="trash-outline"
-                  variant="ghost"
-                  onPress={() => setRemoveTarget(category)}
-                />
-              </Card>
-            </Pressable>
-          ))
+          filteredTree.map((parent) => {
+            const isExpanded = expanded[parent.id] ?? true;
+            return (
+              <View key={parent.id} style={{ gap: 8 }}>
+                <Pressable accessibilityRole="button" onPress={() => openEdit(parent)}>
+                  <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setExpanded((current) => ({ ...current, [parent.id]: !isExpanded }))}
+                      style={({ pressed }) => ({
+                        width: 34,
+                        height: 34,
+                        borderRadius: theme.radius.md,
+                        backgroundColor: pressed ? theme.colors.surfaceElevated : `${parent.color}14`,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      })}
+                    >
+                      <Ionicons name={isExpanded ? 'chevron-down-outline' : 'chevron-forward-outline'} size={18} color={parent.color} />
+                    </Pressable>
+                    <View
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: theme.radius.md,
+                        backgroundColor: `${parent.color}22`,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons name={parent.icon as never} size={20} color={parent.color} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }} numberOfLines={1}>
+                        {parent.name}
+                      </Text>
+                      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                        {t(`categoryTypes.${parent.type}`)} · {parent.children.length} {t('category.subcategories')}
+                      </Text>
+                    </View>
+                    <AppButton title="" icon="add-outline" variant="ghost" onPress={() => openAdd(parent.id)} />
+                    <AppButton title="" icon="trash-outline" variant="ghost" onPress={() => setRemoveTarget(parent)} />
+                  </Card>
+                </Pressable>
+
+                {isExpanded ? (
+                  <View style={{ gap: 8, paddingLeft: 24 }}>
+                    {parent.children.map((child) => (
+                      <Pressable key={child.id} accessibilityRole="button" onPress={() => openEdit(child)}>
+                        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 }}>
+                          <View
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: theme.radius.md,
+                              backgroundColor: `${child.color}20`,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Ionicons name={child.icon as never} size={18} color={child.color} />
+                          </View>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '900' }} numberOfLines={1}>
+                              {child.name}
+                            </Text>
+                            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{parent.name}</Text>
+                          </View>
+                          <AppButton title="" icon="trash-outline" variant="ghost" onPress={() => setRemoveTarget(child)} />
+                        </Card>
+                      </Pressable>
+                    ))}
+                    <AppButton
+                      title={t('category.addSubcategory')}
+                      icon="add-circle-outline"
+                      variant="secondary"
+                      onPress={() => openAdd(parent.id)}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            );
+          })
         )}
       </View>
+
       <BottomSheet
         visible={formVisible}
-        title={editing ? t('manage.editCategory') : t('manage.addCategory')}
+        title={editing ? t('manage.editCategory') : parentId === 'none' ? t('category.addParentCategory') : t('category.addSubcategory')}
         onClose={closeForm}
       >
         <TextField label={t('manage.categoryName')} value={name} onChangeText={setName} />
+        <SelectField
+          label={t('category.parentCategory')}
+          value={parentId}
+          onChange={(value) => {
+            setParentId(value);
+            const parent = parentOptions.find((category) => category.id === value);
+            if (parent) setType(parent.type);
+          }}
+          options={[
+            { label: t('category.noParent'), value: 'none', icon: 'pricetags-outline' },
+            ...parentOptions.map((category) => ({
+              label: category.name,
+              value: category.id,
+              icon: category.icon,
+              color: category.color,
+              detail: t(`categoryTypes.${category.type}`),
+            })),
+          ]}
+          icon="pricetags-outline"
+          searchable
+        />
         <SelectField
           label={t('common.type')}
           value={type}
@@ -247,6 +360,7 @@ export function ManageCategoriesScreen() {
           <AppButton title={t('common.cancel')} variant="secondary" onPress={closeForm} style={{ flex: 1 }} />
         </View>
       </BottomSheet>
+
       <ConfirmDialog
         visible={Boolean(removeTarget)}
         title={t('manage.removeCategory')}

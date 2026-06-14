@@ -50,12 +50,17 @@ function LinkRow({ icon, title }: { icon: string; title: string }) {
 export function AboutScreen() {
   const { theme } = useAppPreferences();
   const { t } = useI18n();
-
+  const softCardStyle = {
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 1,
+  };
   return (
     <Screen>
       <ScreenHeader title={t('about.title')} subtitle={t('about.subtitle')} />
 
-      <Card style={{ alignItems: 'center', gap: 12, paddingVertical: 22, backgroundColor: `${theme.colors.primary}10` }}>
+      <Card style={{ ...softCardStyle, alignItems: 'center', gap: 12, paddingVertical: 22, backgroundColor: `${theme.colors.primary}10` }}>
         <Image source={require('../../assets/icon.png')} style={{ width: 78, height: 78, borderRadius: 18 }} />
         <View style={{ alignItems: 'center', gap: 4 }}>
           <Text style={{ color: theme.colors.text, fontSize: 22, fontWeight: '900' }}>{t('about.appName')}</Text>
@@ -66,32 +71,15 @@ export function AboutScreen() {
         </View>
       </Card>
 
-      <SectionHeader title={t('about.versionDetails')} />
-      <Card style={{ gap: 12 }}>
-        <InfoRow icon="pricetag-outline" title={t('about.appVersion')} body={BUILD_INFO.appVersion} />
-        <InfoRow icon="sparkles-outline" title={t('about.buildLabelTitle')} body={BUILD_INFO.label} />
-        <InfoRow icon="git-branch-outline" title={t('about.buildId')} body={BUILD_INFO.buildId} />
-        <InfoRow icon="calendar-outline" title={t('about.buildDate')} body={BUILD_INFO.buildDate} />
-      </Card>
-
-      <SectionHeader title={t('about.whatItDoes')} />
-      <Card style={{ gap: 16 }}>
-        <InfoRow icon="information-circle-outline" title={t('about.descriptionTitle')} body={t('about.descriptionBody')} />
-        <InfoRow icon="wallet-outline" title={t('about.featureLedger')} body={t('about.featureLedgerBody')} />
-        <InfoRow icon="bar-chart-outline" title={t('about.featureReports')} body={t('about.featureReportsBody')} />
-        <InfoRow icon="color-palette-outline" title={t('about.featureThemes')} body={t('about.featureThemesBody')} />
-        <InfoRow icon="download-outline" title={t('about.exportFeature')} body={t('about.exportFeatureBody')} />
-      </Card>
-
       <SectionHeader title={t('about.dataPrivacy')} />
-      <Card style={{ gap: 16 }}>
+      <Card style={{ ...softCardStyle, gap: 16 }}>
         <InfoRow icon="phone-portrait-outline" title={t('about.offlineFirst')} body={t('about.offlineFirstBody')} />
         <InfoRow icon="shield-checkmark-outline" title={t('about.privacy')} body={t('about.privacyBody')} />
         <InfoRow icon="archive-outline" title={t('about.backup')} body={t('about.backupBody')} />
       </Card>
 
       <SectionHeader title={t('about.supportLegal')} />
-      <Card style={{ gap: 12 }}>
+      <Card style={{ ...softCardStyle, gap: 12 }}>
         <InfoRow icon="business-outline" title={t('about.publisher')} body={t('about.publisherBody')} />
         <LinkRow icon="mail-outline" title={t('about.supportEmail')} />
         <LinkRow icon="document-lock-outline" title={t('about.privacyPolicy')} />

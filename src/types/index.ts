@@ -102,6 +102,7 @@ export type CategoryType = 'income' | 'expense' | 'loan' | 'debt' | 'transfer' |
 
 export interface Category {
   id: string;
+  parentId?: string | null;
   name: string;
   type: CategoryType;
   icon: string;
@@ -124,6 +125,8 @@ export interface Transaction {
   toAmount?: number | null;
   toCurrency?: CurrencyCode | null;
   categoryId?: string | null;
+  parentCategoryId?: string | null;
+  subcategoryId?: string | null;
   date: string;
   note?: string | null;
   exchangeRate: number;
@@ -146,6 +149,12 @@ export interface TransactionWithMeta extends Transaction {
   categoryName?: string | null;
   categoryColor?: string | null;
   categoryIcon?: string | null;
+  parentCategoryName?: string | null;
+  parentCategoryColor?: string | null;
+  parentCategoryIcon?: string | null;
+  subcategoryName?: string | null;
+  subcategoryColor?: string | null;
+  subcategoryIcon?: string | null;
 }
 
 export interface CreateTransactionInput {
@@ -157,6 +166,8 @@ export interface CreateTransactionInput {
   toAmount?: number | null;
   toCurrency?: CurrencyCode | null;
   categoryId?: string | null;
+  parentCategoryId?: string | null;
+  subcategoryId?: string | null;
   date: string;
   note?: string;
   exchangeRate: number;
@@ -185,7 +196,7 @@ export interface SummaryTotals {
 }
 
 export interface BackupPayload {
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
   exportedAt: string;
   settings: AppSettings;
   wallets: Wallet[];
@@ -196,8 +207,41 @@ export interface BackupPayload {
   goals?: Goal[];
   goalContributions?: GoalContribution[];
   backupMetadata?: BackupMetadata[];
+  investments?: InvestmentRecord[];
   exchangeRates?: Record<string, Record<string, number>>;
   reportMetadata?: Record<string, unknown>;
+}
+
+export type InvestmentAssetType =
+  | 'stock'
+  | 'crypto'
+  | 'gold'
+  | 'fund'
+  | 'bond'
+  | 'cash_savings'
+  | 'real_estate'
+  | 'collectible'
+  | 'other';
+
+export interface InvestmentRecord {
+  id: string;
+  type: 'buy' | 'sell' | 'income' | 'fee' | 'valuation';
+  assetType: InvestmentAssetType;
+  assetName: string;
+  quantity?: number | null;
+  unitPrice?: number | null;
+  amount: number;
+  currency: CurrencyCode;
+  walletId?: string | null;
+  transactionId?: string | null;
+  currentValue?: number | null;
+  realizedProfitLoss?: number | null;
+  unrealizedProfitLoss?: number | null;
+  date: string;
+  note?: string | null;
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type CurrencyKind = 'fiat' | 'crypto' | 'custom';

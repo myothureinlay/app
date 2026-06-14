@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
 import { BottomSheet } from '../components/BottomSheet';
@@ -32,13 +32,17 @@ import {
   calculateReportSummary,
   groupExpensesByCurrency,
   groupTransactionsByCategory,
+  groupTransactionsByParentCategory,
+  groupTransactionsBySubcategory,
   historyByTypes,
   monthlyIncomeExpense,
   topIndividualExpenses,
   walletDistribution,
 } from '../logic/reports';
 import type { CurrencyCode, TransactionType } from '../types';
+import { saveAndShareFile } from '../utils/files';
 import { formatMoney } from '../utils/money';
+import { buildExcelCompatibleReport, buildReportImageSvg, buildReportPdf } from '../utils/reportExports';
 
 type RangeMode = DateRangePreset;
 
@@ -59,6 +63,19 @@ const reportWidgetIds = [
 
 type ReportWidgetId = (typeof reportWidgetIds)[number];
 
+function stamp() {
+  return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+function csvCell(value: string | number) {
+  const next = String(value);
+  return /[",\n]/.test(next) ? `"${next.replace(/"/g, '""')}"` : next;
+}
+
+function csvLine(values: Array<string | number>) {
+  return values.map(csvCell).join(',');
+}
+
 export function ReportsScreen() {
   const navigation = useNavigation<any>();
   const { theme, settings, updateSettings } = useAppPreferences();
@@ -69,13 +86,28 @@ export function ReportsScreen() {
   const [customTo, setCustomTo] = useState(new Date().toISOString().slice(0, 10));
   const [currency, setCurrency] = useState<'all' | CurrencyCode>('all');
   const [categoryId, setCategoryId] = useState('all');
+  const [parentCategoryId, setParentCategoryId] = useState('all');
+  const [subcategoryId, setSubcategoryId] = useState('all');
   const [walletId, setWalletId] = useState('all');
   const [typeFilter, setTypeFilter] = useState<'all' | TransactionType>('all');
   const [dateSheetVisible, setDateSheetVisible] = useState(false);
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const [exportVisible, setExportVisible] = useState(false);
   const [customizeVisible, setCustomizeVisible] = useState(false);
   const currencyOptions = currencies.length > 0 ? currencies.filter((item) => item.isActive).map((item) => item.code) : ['USD'];
-  const activeFilterCount = [currency !== 'all', categoryId !== 'all', walletId !== 'all', typeFilter !== 'all'].filter(Boolean).length;
+  const parentCategories = categories.filter((category) => !category.parentId && !category.removedAt);
+  const subcategoryOptions = categories.filter((category) => {
+    if (!category.parentId || category.removedAt) return false;
+    return parentCategoryId === 'all' || category.parentId === parentCategoryId;
+  });
+  const activeFilterCount = [
+    currency !== 'all',
+    categoryId !== 'all',
+    parentCategoryId !== 'all',
+    subcategoryId !== 'all',
+    walletId !== 'all',
+    typeFilter !== 'all',
+  ].filter(Boolean).length;
   const reportWidgets = useMemo<WidgetDescriptor[]>(
     () => [
       { id: 'monthlySummary', title: t('reports.monthlySummary'), icon: 'calendar-outline', color: theme.colors.primary },
@@ -116,19 +148,28 @@ export function ReportsScreen() {
         if (!isWithinDateRange(transaction.date, activeRange)) return false;
         if (currency !== 'all' && transaction.currency !== currency) return false;
         if (categoryId !== 'all' && transaction.categoryId !== categoryId) return false;
+        if (parentCategoryId !== 'all' && (transaction.parentCategoryId ?? transaction.categoryId) !== parentCategoryId) return false;
+        if (subcategoryId !== 'all') {
+          if (subcategoryId === 'none' && transaction.subcategoryId) return false;
+          if (subcategoryId !== 'none' && transaction.subcategoryId !== subcategoryId) return false;
+        }
         if (typeFilter !== 'all' && transaction.type !== typeFilter) return false;
         if (walletId !== 'all' && transaction.walletId !== walletId && transaction.toWalletId !== walletId) {
           return false;
         }
         return true;
       }),
-    [transactions, activeRange, currency, categoryId, walletId, typeFilter]
+    [transactions, activeRange, currency, categoryId, parentCategoryId, subcategoryId, walletId, typeFilter]
   );
 
   const summary = calculateReportSummary(filtered, settings.baseCurrency);
   const trend = monthlyIncomeExpense(filtered, settings.baseCurrency, 12);
   const expenseByCategory = groupTransactionsByCategory(filtered, settings.baseCurrency, 'expense');
   const incomeByCategory = groupTransactionsByCategory(filtered, settings.baseCurrency, 'income');
+  const expenseByParentCategory = groupTransactionsByParentCategory(filtered, settings.baseCurrency, 'expense');
+  const expenseBySubcategory = groupTransactionsBySubcategory(filtered, settings.baseCurrency, 'expense');
+  const incomeByParentCategory = groupTransactionsByParentCategory(filtered, settings.baseCurrency, 'income');
+  const incomeBySubcategory = groupTransactionsBySubcategory(filtered, settings.baseCurrency, 'income');
   const expenseByCurrency = groupExpensesByCurrency(filtered);
   const walletRows = walletDistribution(wallets, settings.baseCurrency);
   const topExpenses = topIndividualExpenses(filtered, settings.baseCurrency, 8);
@@ -150,6 +191,136 @@ export function ReportsScreen() {
     { label: t('dateRange.thisYear'), value: 'this_year' as RangeMode },
     { label: t('reports.customRange'), value: 'custom' as RangeMode },
   ];
+  const quickRangeOptions = rangeOptions.slice(0, 6);
+  const rangeLabel = formatDateRangeLabel(activeRange, locale);
+  const activeRangeName = rangeOptions.find((option) => option.value === rangeMode)?.label ?? rangeLabel;
+  const categoryLabel = categoryId === 'all' ? t('common.all') : categories.find((category) => category.id === categoryId)?.name ?? t('common.all');
+  const parentCategoryLabel = parentCategoryId === 'all' ? t('common.all') : categories.find((category) => category.id === parentCategoryId)?.name ?? t('common.all');
+  const subcategoryLabel =
+    subcategoryId === 'all'
+      ? t('common.all')
+      : subcategoryId === 'none'
+        ? t('category.noSubcategory')
+        : categories.find((category) => category.id === subcategoryId)?.name ?? t('common.all');
+  const walletLabel = walletId === 'all' ? t('common.all') : wallets.find((wallet) => wallet.id === walletId)?.name ?? t('common.all');
+  const typeLabel = typeFilter === 'all' ? t('common.all') : t(`types.${typeFilter}`);
+  const filterSummary = [
+    `${t('common.currency')}: ${currency === 'all' ? t('common.all') : currency}`,
+    `${t('category.parentCategory')}: ${parentCategoryLabel}`,
+    `${t('category.subcategory')}: ${subcategoryLabel}`,
+    `${t('common.category')}: ${categoryLabel}`,
+    `${t('common.wallet')}: ${walletLabel}`,
+    `${t('transaction.type')}: ${typeLabel}`,
+  ].join(' | ');
+  const reportCsv = useMemo(() => {
+    const rows = [
+      csvLine([t('about.appName'), t('settings.exportReportTitle')]),
+      csvLine([t('reports.dateRange'), rangeLabel]),
+      csvLine([t('reports.activePreset'), activeRangeName]),
+      csvLine([t('reports.generatedAt'), new Date().toLocaleString()]),
+      csvLine([t('reports.activeFilters'), filterSummary]),
+      csvLine([t('widgets.visible'), activeReportWidgets.map((widget) => widget.title).join(' / ')]),
+      '',
+      csvLine([t('reports.summaryValues')]),
+      csvLine([t('common.income'), formatMoney(summary.income, settings.baseCurrency)]),
+      csvLine([t('common.expense'), formatMoney(summary.expenses, settings.baseCurrency)]),
+      csvLine([t('reports.lossSummary'), formatMoney(summary.losses, settings.baseCurrency)]),
+      csvLine([t('dashboard.netCashflow'), formatMoney(summary.netCashflow, settings.baseCurrency)]),
+      csvLine([t('dashboard.receivable'), formatMoney(summary.receivableMovement, settings.baseCurrency)]),
+      csvLine([t('dashboard.liability'), formatMoney(summary.liabilityMovement, settings.baseCurrency)]),
+      '',
+      csvLine([t('reports.monthlyCashflowTrend')]),
+      csvLine([t('common.month'), t('common.income'), t('common.expense'), t('dashboard.netCashflow')]),
+      ...trend.map((row) => csvLine([row.label, row.income, row.expenses, row.cashflow])),
+      '',
+      csvLine([t('reports.expenseByCategory')]),
+      csvLine([t('common.category'), t('common.total')]),
+      ...expenseByCategory.map((row) => csvLine([row.label, row.total])),
+      '',
+      csvLine([t('reports.expenseByParentCategory')]),
+      csvLine([t('category.parentCategory'), t('common.total')]),
+      ...expenseByParentCategory.map((row) => csvLine([row.label, row.total])),
+      '',
+      csvLine([t('reports.expenseBySubcategory')]),
+      csvLine([t('category.subcategory'), t('common.total')]),
+      ...expenseBySubcategory.map((row) => csvLine([row.label, row.total])),
+      '',
+      csvLine([t('reports.incomeByParentCategory')]),
+      csvLine([t('category.parentCategory'), t('common.total')]),
+      ...incomeByParentCategory.map((row) => csvLine([row.label, row.total])),
+      '',
+      csvLine([t('reports.incomeBySubcategory')]),
+      csvLine([t('category.subcategory'), t('common.total')]),
+      ...incomeBySubcategory.map((row) => csvLine([row.label, row.total])),
+      '',
+      csvLine([t('reports.topIndividualExpenses')]),
+      csvLine([t('common.date'), t('transaction.title'), t('common.amount')]),
+      ...topExpenses.map((row) => csvLine([row.date, row.title, row.amount])),
+    ];
+    return rows.join('\n');
+  }, [
+    activeRangeName,
+    activeReportWidgets,
+    expenseByCategory,
+    expenseByParentCategory,
+    expenseBySubcategory,
+    incomeByParentCategory,
+    incomeBySubcategory,
+    filterSummary,
+    rangeLabel,
+    settings.baseCurrency,
+    summary,
+    t,
+    topExpenses,
+    trend,
+  ]);
+
+  const reportExportInput = () => ({
+    reportCsv,
+    reportTitle: t('settings.exportReportTitle'),
+    dateRangeLabel: rangeLabel,
+    generatedAt: new Date().toLocaleString(),
+    logoUri: Image.resolveAssetSource(require('../../assets/icon.png')).uri,
+  });
+
+  const exportReport = async (format: 'csv' | 'excel' | 'pdf' | 'image') => {
+    try {
+      if (format === 'csv') {
+        const uri = await saveAndShareFile(`finance-report-${stamp()}.csv`, reportCsv, 'text/csv');
+        Alert.alert(t('settings.exported'), uri);
+        setExportVisible(false);
+        return;
+      }
+
+      if (format === 'excel') {
+        const uri = await saveAndShareFile(
+          `finance-report-${stamp()}.xls`,
+          buildExcelCompatibleReport(reportExportInput()),
+          'application/vnd.ms-excel'
+        );
+        Alert.alert(t('settings.exported'), `${uri}\n${t('settings.excelCompatibleNote')}`);
+        setExportVisible(false);
+        return;
+      }
+
+      if (format === 'pdf') {
+        const uri = await saveAndShareFile(`finance-report-${stamp()}.pdf`, buildReportPdf(reportExportInput()), 'application/pdf');
+        Alert.alert(t('settings.exported'), uri);
+        setExportVisible(false);
+        return;
+      }
+
+      const uri = await saveAndShareFile(
+        `finance-report-image-${stamp()}.svg`,
+        buildReportImageSvg(reportExportInput()),
+        'image/svg+xml'
+      );
+      Alert.alert(t('settings.exported'), `${uri}\n${t('settings.imageExportNote')}`);
+      setExportVisible(false);
+    } catch {
+      Alert.alert(t('settings.exportFailed'));
+    }
+  };
 
   const renderReportWidget = (id: ReportWidgetId) => {
     switch (id) {
@@ -190,17 +361,29 @@ export function ReportsScreen() {
                   icon="pie-chart-outline"
                   actionLabel={t('empty.addFirstTransaction')}
                   actionIcon="add-circle-outline"
-                  onAction={() => navigation.navigate('Add' as never)}
+                  onAction={() => navigation.navigate('AddTransaction' as never)}
                 />
               ) : (
                 <DonutChart data={expenseByCategory.map((row) => ({ ...row, value: row.total }))} />
               )}
+            </ChartCard>
+            <ChartCard title={t('reports.expenseByParentCategory')}>
+              <HorizontalBarChart data={expenseByParentCategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
+            </ChartCard>
+            <ChartCard title={t('reports.expenseBySubcategory')}>
+              <HorizontalBarChart data={expenseBySubcategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
             </ChartCard>
             <ChartCard title={t('reports.topExpenseCategories')}>
               <HorizontalBarChart data={expenseByCategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
             </ChartCard>
             <ChartCard title={t('reports.incomeByCategory')}>
               <HorizontalBarChart data={incomeByCategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
+            </ChartCard>
+            <ChartCard title={t('reports.incomeByParentCategory')}>
+              <HorizontalBarChart data={incomeByParentCategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
+            </ChartCard>
+            <ChartCard title={t('reports.incomeBySubcategory')}>
+              <HorizontalBarChart data={incomeBySubcategory.map((row) => ({ ...row, value: row.total }))} currency={settings.baseCurrency} />
             </ChartCard>
             <ChartCard title={t('reports.expenseByCurrency')}>
               <HorizontalBarChart data={expenseByCurrency.map((row) => ({ ...row, value: row.total }))} currency={currency === 'all' ? settings.baseCurrency : currency} />
@@ -297,7 +480,7 @@ export function ReportsScreen() {
                 icon="receipt-outline"
                 actionLabel={t('empty.addFirstTransaction')}
                 actionIcon="add-circle-outline"
-                onAction={() => navigation.navigate('Add' as never)}
+                onAction={() => navigation.navigate('AddTransaction' as never)}
               />
             ) : (
               filtered.slice(0, 12).map((transaction) => (
@@ -320,15 +503,50 @@ export function ReportsScreen() {
       <SectionHeader
         title={t('reports.title')}
         action={
-          <AppButton
-            title={t('widgets.customize')}
-            icon="options-outline"
-            variant="secondary"
-            onPress={() => setCustomizeVisible(true)}
-            style={{ minHeight: 42 }}
-          />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <AppButton
+              title={t('common.export')}
+              icon="download-outline"
+              onPress={() => setExportVisible(true)}
+              style={{ minHeight: 42, paddingHorizontal: 12 }}
+            />
+            <AppButton
+              title=""
+              icon="options-outline"
+              variant="secondary"
+              onPress={() => setCustomizeVisible(true)}
+              style={{ width: 44, minHeight: 44, borderRadius: 22, paddingHorizontal: 0 }}
+            />
+          </View>
         }
       />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
+        {quickRangeOptions.map((option) => {
+          const selected = option.value === rangeMode;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="button"
+              onPress={() => setRangeMode(option.value)}
+              style={({ pressed }) => ({
+                minHeight: 38,
+                paddingHorizontal: 13,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: selected ? theme.colors.primary : theme.colors.border,
+                backgroundColor: selected ? theme.colors.primary : pressed ? theme.colors.surfaceElevated : theme.colors.surface,
+                alignItems: 'center',
+                justifyContent: 'center',
+              })}
+            >
+              <Text style={{ color: selected ? '#FFFFFF' : theme.colors.text, fontSize: 13, fontWeight: '900' }}>
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Pressable
@@ -365,17 +583,35 @@ export function ReportsScreen() {
         />
       </View>
 
-      <BottomSheet visible={dateSheetVisible} title={t('reports.dateRange')} onClose={() => setDateSheetVisible(false)}>
+      <BottomSheet
+        visible={dateSheetVisible}
+        title={t('reports.dateRange')}
+        onClose={() => setDateSheetVisible(false)}
+        footer={
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <AppButton title={t('dateRange.apply')} icon="checkmark-outline" onPress={() => setDateSheetVisible(false)} style={{ flex: 1 }} />
+            <AppButton
+              title={t('dateRange.clear')}
+              icon="close-outline"
+              variant="secondary"
+              onPress={() => {
+                setRangeMode('this_month');
+                setCustomFrom(new Date().toISOString().slice(0, 10));
+                setCustomTo(new Date().toISOString().slice(0, 10));
+                setDateSheetVisible(false);
+              }}
+              style={{ flex: 1 }}
+            />
+          </View>
+        }
+      >
         {rangeOptions.map((option) => {
           const selected = option.value === rangeMode;
           return (
             <Pressable
               key={option.value}
               accessibilityRole="button"
-              onPress={() => {
-                setRangeMode(option.value);
-                if (option.value !== 'custom') setDateSheetVisible(false);
-              }}
+              onPress={() => setRangeMode(option.value)}
             >
               <Card
                 style={{
@@ -398,23 +634,19 @@ export function ReportsScreen() {
           <Card style={{ gap: 12 }}>
             <DatePickerField label={t('dateRange.startDate')} value={customFrom} onChangeText={setCustomFrom} />
             <DatePickerField label={t('dateRange.endDate')} value={customTo} onChangeText={setCustomTo} />
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <AppButton title={t('dateRange.apply')} icon="checkmark-outline" onPress={() => setDateSheetVisible(false)} style={{ flex: 1 }} />
-              <AppButton
-                title={t('dateRange.clear')}
-                icon="close-outline"
-                variant="secondary"
-                onPress={() => {
-                  setRangeMode('this_month');
-                  setCustomFrom(new Date().toISOString().slice(0, 10));
-                  setCustomTo(new Date().toISOString().slice(0, 10));
-                  setDateSheetVisible(false);
-                }}
-                style={{ flex: 1 }}
-              />
-            </View>
           </Card>
         ) : null}
+      </BottomSheet>
+
+      <BottomSheet visible={exportVisible} title={t('reports.exportReport')} onClose={() => setExportVisible(false)}>
+        <Card style={{ gap: 6, backgroundColor: `${theme.colors.primary}10`, borderColor: `${theme.colors.primary}35` }}>
+          <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '900' }}>{rangeLabel}</Text>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12, lineHeight: 17 }}>{filterSummary}</Text>
+        </Card>
+        <AppButton title={t('reports.exportCsv')} icon="document-text-outline" variant="secondary" onPress={() => exportReport('csv')} />
+        <AppButton title={t('reports.exportExcel')} icon="grid-outline" variant="secondary" onPress={() => exportReport('excel')} />
+        <AppButton title={t('reports.exportPdf')} icon="document-outline" variant="secondary" onPress={() => exportReport('pdf')} />
+        <AppButton title={t('reports.exportImage')} icon="image-outline" variant="secondary" onPress={() => exportReport('image')} />
       </BottomSheet>
 
       <BottomSheet
@@ -430,6 +662,8 @@ export function ReportsScreen() {
               onPress={() => {
                 setCurrency('all');
                 setCategoryId('all');
+                setParentCategoryId('all');
+                setSubcategoryId('all');
                 setWalletId('all');
                 setTypeFilter('all');
               }}
@@ -445,6 +679,43 @@ export function ReportsScreen() {
           onChange={setCurrency}
           options={[{ label: t('common.all'), value: 'all', icon: 'layers-outline' }, ...currencyOptions.map((item) => ({ label: item, value: item, icon: 'cash-outline', badge: getCurrencyBadge(item) }))]}
           icon="cash-outline"
+          searchable
+        />
+        <PickerField
+          label={t('category.parentCategory')}
+          value={parentCategoryId}
+          onChange={(value) => {
+            setParentCategoryId(value);
+            setSubcategoryId('all');
+          }}
+          options={[
+            { label: t('common.all'), value: 'all', icon: 'pricetags-outline' },
+            ...parentCategories.map((category) => ({
+              label: category.name,
+              value: category.id,
+              icon: category.icon,
+              color: category.color,
+            })),
+          ]}
+          icon="pricetags-outline"
+          searchable
+        />
+        <PickerField
+          label={t('category.subcategory')}
+          value={subcategoryId}
+          onChange={setSubcategoryId}
+          options={[
+            { label: t('common.all'), value: 'all', icon: 'layers-outline' },
+            { label: t('category.noSubcategory'), value: 'none', icon: 'remove-circle-outline' },
+            ...subcategoryOptions.map((category) => ({
+              label: category.name,
+              value: category.id,
+              icon: category.icon,
+              color: category.color,
+              detail: categories.find((parent) => parent.id === category.parentId)?.name,
+            })),
+          ]}
+          icon="pricetag-outline"
           searchable
         />
         <PickerField
