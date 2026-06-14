@@ -22,13 +22,31 @@ export type TransactionType =
 export type ThemePreset =
   | 'light'
   | 'dark'
+  | 'emeraldLight'
+  | 'oceanLight'
+  | 'sunsetLight'
+  | 'royalPurpleLight'
+  | 'sakuraLight'
+  | 'coffeeLight'
+  | 'goldLight'
+  | 'myanmarJadeLight'
+  | 'lavenderLight'
+  | 'coralLight'
+  | 'minimalGrayLight'
+  | 'emeraldDark'
   | 'ocean'
+  | 'sunsetDark'
   | 'emerald'
   | 'royalPurple'
+  | 'royalPurpleDark'
   | 'sunset'
+  | 'sakuraDark'
   | 'goldBlack'
   | 'minimalGray'
   | 'myanmarJade'
+  | 'myanmarJadeDark'
+  | 'lavenderDark'
+  | 'slateDark'
   | 'neonCyan'
   | 'midnightBlue'
   | 'champagneGold'
@@ -36,7 +54,8 @@ export type ThemePreset =
   | 'forest'
   | 'coffee'
   | 'ruby'
-  | 'iceBlue';
+  | 'iceBlue'
+  | 'auroraGlass';
 export type ThemePreference = ThemePreset | 'system' | 'custom';
 export type LanguageCode = 'en' | 'my' | 'th' | 'zh-Hans';
 export type CurrencyFilter = 'all' | CurrencyCode;

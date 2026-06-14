@@ -37,6 +37,40 @@ function groupByDate(records: TransactionWithMeta[]) {
   }, []);
 }
 
+function RecordActionButton({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  const { theme } = useAppPreferences();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 38,
+        height: 36,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: pressed ? `${color}24` : `${color}16`,
+        borderWidth: 1,
+        borderColor: `${color}30`,
+      })}
+    >
+      <Ionicons name={icon as never} size={20} color={color || theme.colors.primary} />
+    </Pressable>
+  );
+}
+
 export function RecordsScreen() {
   const navigation = useNavigation<any>();
   const { theme, settings } = useAppPreferences();
@@ -134,7 +168,6 @@ export function RecordsScreen() {
             <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '900' }}>{records.length}</Text>
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{t('records.matchingRecords')}</Text>
           </View>
-          <AppButton title="" icon="add-outline" onPress={() => navigation.navigate('AddTransaction')} style={{ width: 44, minHeight: 44, borderRadius: 22, paddingHorizontal: 0 }} />
         </View>
       </Card>
 
@@ -164,12 +197,11 @@ export function RecordsScreen() {
                         <Text style={{ flex: 1, color: theme.colors.danger, fontSize: 12, fontWeight: '800' }}>
                           {t('records.deletedStatus')}
                         </Text>
-                        <AppButton
-                          title={t('records.restoreRecord')}
+                        <RecordActionButton
                           icon="refresh-outline"
-                          variant="secondary"
+                          label={t('records.restoreRecord')}
+                          color={theme.colors.success}
                           onPress={() => restoreDeletedTransaction(record.id)}
-                          style={{ minHeight: 34, paddingHorizontal: 10 }}
                         />
                       </>
                     ) : (
@@ -177,19 +209,17 @@ export function RecordsScreen() {
                         <Text style={{ flex: 1, color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
                           {record.note || record.subcategoryName || record.parentCategoryName || t(`types.${record.type}`)}
                         </Text>
-                        <AppButton
-                          title=""
+                        <RecordActionButton
                           icon="create-outline"
-                          variant="ghost"
+                          label={t('common.edit')}
+                          color={theme.colors.primary}
                           onPress={() => navigation.navigate('EditTransaction', { transactionId: record.id })}
-                          style={{ minHeight: 34, width: 40 }}
                         />
-                        <AppButton
-                          title=""
+                        <RecordActionButton
                           icon="trash-outline"
-                          variant="ghost"
+                          label={t('common.remove')}
+                          color={theme.colors.danger}
                           onPress={() => confirmDelete(record)}
-                          style={{ minHeight: 34, width: 40 }}
                         />
                       </>
                     )}

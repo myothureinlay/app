@@ -51,7 +51,7 @@ export function AppButton({
         style,
       ]}
     >
-      {icon ? <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={18} color={foreground} /> : null}
+      {icon ? <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={19} color={foreground} /> : null}
       <Text style={[styles.title, { color: foreground }]} numberOfLines={1}>
         {title}
       </Text>
@@ -61,7 +61,7 @@ export function AppButton({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 48,
+    minHeight: 44,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 16,
     alignItems: 'center',

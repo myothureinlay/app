@@ -19,21 +19,21 @@ export function ReportCard({ label, value, currency, icon, color }: ReportCardPr
   const accent = color ?? theme.colors.primary;
 
   return (
-    <Card style={{ flex: 1, gap: 12, minHeight: 112 }}>
+    <Card style={{ flex: 1, gap: 8, minHeight: 92, padding: 11 }}>
       <View
         style={{
-          width: 34,
-          height: 34,
-          borderRadius: theme.radius.md,
-          backgroundColor: `${accent}20`,
+          width: 32,
+          height: 32,
+          borderRadius: 10,
+          backgroundColor: `${accent}24`,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={18} color={accent} />
+        <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={19} color={accent} />
       </View>
       <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '800' }}>{label}</Text>
-      <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
+      <Text style={{ color: theme.colors.text, fontSize: 17, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
         {formatMoney(value, currency as never)}
       </Text>
     </Card>

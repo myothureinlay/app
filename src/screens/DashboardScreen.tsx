@@ -14,6 +14,7 @@ import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
 import { WalletCard } from '../components/WalletCard';
 import { WidgetCustomizeSheet, visibleWidgets, type WidgetDescriptor } from '../components/WidgetCustomizeSheet';
+import { BUILD_INFO } from '../constants/build';
 import { getCurrencyBadge } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
@@ -147,6 +148,41 @@ export function DashboardScreen() {
     [t, theme]
   );
   const activeDashboardWidgets = visibleWidgets(dashboardWidgets, settings.dashboardWidgets);
+  const isAurora = settings.theme === 'auroraGlass';
+  const accountSections = [
+    {
+      title: t('settings.appearance'),
+      rows: [
+        { route: 'ThemePicker', label: t('settings.themePicker'), icon: 'color-palette-outline' },
+        { route: 'LanguagePicker', label: t('settings.languagePicker'), icon: 'language-outline' },
+        {
+          route: 'Settings',
+          label: t('settings.iconStyle'),
+          icon: 'sparkles-outline',
+          detail: settings.iconStyle === 'filled' ? t('settings.filledIcons') : t('settings.lineIcons'),
+        },
+        { route: 'Settings', label: t('settings.baseCurrency'), icon: 'cash-outline', detail: settings.baseCurrency },
+      ],
+    },
+    {
+      title: t('settings.data'),
+      rows: [
+        { route: 'ManageWallets', label: t('settings.manageWallets'), icon: 'wallet-outline' },
+        { route: 'ManageCategories', label: t('settings.manageCategories'), icon: 'pricetags-outline' },
+        { route: 'Settings', label: t('settings.manageExchangeRates'), icon: 'swap-horizontal-outline' },
+        { route: 'ManageCurrencies', label: t('settings.manageCurrencies'), icon: 'cash-outline' },
+        { route: 'GoogleBackup', label: t('settings.backupRestore'), icon: 'archive-outline' },
+      ],
+    },
+    {
+      title: t('account.support'),
+      rows: [
+        { route: 'UserManual', label: t('settings.userManual'), icon: 'book-outline' },
+        { route: 'Notifications', label: t('settings.notifications'), icon: 'notifications-outline' },
+        { route: 'About', label: t('settings.aboutApp'), icon: 'information-circle-outline' },
+      ],
+    },
+  ];
 
   if (!isReady) {
     return (
@@ -161,7 +197,11 @@ export function DashboardScreen() {
       case 'balanceSummary':
         return (
           <LinearGradient
-            colors={[theme.colors.primaryDark, theme.colors.primary, theme.colors.accent]}
+            colors={
+              isAurora
+                ? ['#0B1E35', '#123D68', '#4C1D95', '#F6C85F']
+                : [theme.colors.primaryDark, theme.colors.primary, theme.colors.accent]
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ borderRadius: theme.radius.lg + 6, padding: 18, gap: 18, overflow: 'hidden' }}
@@ -453,33 +493,69 @@ export function DashboardScreen() {
         onClose={() => setCustomizeVisible(false)}
       />
       <BottomSheet visible={accountVisible} title={t('account.title')} onClose={() => setAccountVisible(false)}>
-        {[
-          ['Settings', t('nav.settings'), 'settings-outline'],
-          ['ManageCurrencies', t('settings.manageCurrencies'), 'cash-outline'],
-          ['ManageCategories', t('settings.manageCategories'), 'pricetags-outline'],
-          ['GoogleBackup', t('settings.backupRestore'), 'archive-outline'],
-          ['UserManual', t('settings.userManual'), 'book-outline'],
-          ['Notifications', t('settings.notifications'), 'notifications-outline'],
-          ['About', t('settings.aboutApp'), 'information-circle-outline'],
-          ['ThemePicker', t('settings.themePicker'), 'color-palette-outline'],
-          ['LanguagePicker', t('settings.languagePicker'), 'language-outline'],
-        ].map(([route, label, icon]) => (
-          <AppButton
-            key={route}
-            title={label}
-            icon={icon}
-            variant="secondary"
-            onPress={() => {
-              setAccountVisible(false);
-              navigation.navigate(route as never);
-            }}
-          />
+        {accountSections.map((section) => (
+          <View key={section.title} style={{ gap: 7 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '900' }}>{section.title}</Text>
+            <View style={{ gap: 6 }}>
+              {section.rows.map((row) => (
+                <Pressable
+                  key={`${section.title}-${row.label}`}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setAccountVisible(false);
+                    navigation.navigate(row.route as never);
+                  }}
+                  style={({ pressed }) => ({
+                    minHeight: 44,
+                    borderRadius: theme.radius.md,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                    backgroundColor: pressed ? theme.colors.surfaceElevated : theme.colors.surface,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                  })}
+                >
+                  <View
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 10,
+                      backgroundColor: `${theme.colors.primary}18`,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name={row.icon as never} size={19} color={theme.colors.primary} />
+                  </View>
+                  <Text style={{ flex: 1, color: theme.colors.text, fontSize: 14, fontWeight: '900' }} numberOfLines={1}>
+                    {row.label}
+                  </Text>
+                  {row.detail ? (
+                    <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '800' }} numberOfLines={1}>
+                      {row.detail}
+                    </Text>
+                  ) : null}
+                  <Ionicons name="chevron-forward-outline" size={17} color={theme.colors.textMuted} />
+                </Pressable>
+              ))}
+            </View>
+          </View>
         ))}
-        <Card style={{ gap: 4 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '900' }}>{t('about.buildLabelTitle')}</Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('about.buildLabel')}</Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{t('settings.version')}</Text>
-        </Card>
+        <View style={{ gap: 7 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '900' }}>{t('account.build')}</Text>
+          <Card style={{ gap: 3, padding: 10, backgroundColor: `${theme.colors.primary}10`, borderColor: `${theme.colors.primary}30` }}>
+            <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '900' }}>{BUILD_INFO.shortLabel}</Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+              {BUILD_INFO.label}
+            </Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+              {BUILD_INFO.appVersion} · {BUILD_INFO.buildId}
+            </Text>
+          </Card>
+        </View>
       </BottomSheet>
     </Screen>
   );

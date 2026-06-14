@@ -322,6 +322,12 @@ export function ReportsScreen() {
     }
   };
 
+  const openDateSheet = () => {
+    setCustomFrom(activeRange.from.slice(0, 10));
+    setCustomTo(activeRange.to.slice(0, 10));
+    setDateSheetVisible(true);
+  };
+
   const renderReportWidget = (id: ReportWidgetId) => {
     switch (id) {
       case 'monthlySummary':
@@ -551,7 +557,7 @@ export function ReportsScreen() {
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => setDateSheetVisible(true)}
+          onPress={openDateSheet}
           style={({ pressed }) => ({
             flex: 1,
             minHeight: 56,
@@ -589,7 +595,15 @@ export function ReportsScreen() {
         onClose={() => setDateSheetVisible(false)}
         footer={
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <AppButton title={t('dateRange.apply')} icon="checkmark-outline" onPress={() => setDateSheetVisible(false)} style={{ flex: 1 }} />
+            <AppButton
+              title={t('dateRange.apply')}
+              icon="checkmark-outline"
+              onPress={() => {
+                setRangeMode('custom');
+                setDateSheetVisible(false);
+              }}
+              style={{ flex: 1 }}
+            />
             <AppButton
               title={t('dateRange.clear')}
               icon="close-outline"
@@ -605,37 +619,13 @@ export function ReportsScreen() {
           </View>
         }
       >
-        {rangeOptions.map((option) => {
-          const selected = option.value === rangeMode;
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="button"
-              onPress={() => setRangeMode(option.value)}
-            >
-              <Card
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: 10,
-                  borderColor: selected ? theme.colors.primary : theme.colors.border,
-                  backgroundColor: selected ? `${theme.colors.primary}12` : theme.colors.surface,
-                }}
-              >
-                <Ionicons name={option.value === 'custom' ? 'calendar-number-outline' : 'calendar-outline'} size={18} color={selected ? theme.colors.primary : theme.colors.textMuted} />
-                <Text style={{ flex: 1, color: theme.colors.text, fontSize: 15, fontWeight: '900' }}>{option.label}</Text>
-                {selected ? <Ionicons name="checkmark-circle-outline" size={21} color={theme.colors.primary} /> : null}
-              </Card>
-            </Pressable>
-          );
-        })}
-        {rangeMode === 'custom' ? (
-          <Card style={{ gap: 12 }}>
-            <DatePickerField label={t('dateRange.startDate')} value={customFrom} onChangeText={setCustomFrom} />
-            <DatePickerField label={t('dateRange.endDate')} value={customTo} onChangeText={setCustomTo} />
-          </Card>
-        ) : null}
+        <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
+          {t('dateRange.useQuickButtonsAbove')}
+        </Text>
+        <Card style={{ gap: 12 }}>
+          <DatePickerField label={t('dateRange.startDate')} value={customFrom} onChangeText={setCustomFrom} />
+          <DatePickerField label={t('dateRange.endDate')} value={customTo} onChangeText={setCustomTo} />
+        </Card>
       </BottomSheet>
 
       <BottomSheet visible={exportVisible} title={t('reports.exportReport')} onClose={() => setExportVisible(false)}>
@@ -778,7 +768,7 @@ export function ReportsScreen() {
           onAction={() => setCustomizeVisible(true)}
         />
       ) : (
-        activeReportWidgets.map((widget) => <View key={widget.id}>{renderReportWidget(widget.id as ReportWidgetId)}</View>)
+        activeReportWidgets.map((widget) => <View key={widget.id} style={{ gap: 12 }}>{renderReportWidget(widget.id as ReportWidgetId)}</View>)
       )}
 
       <WidgetCustomizeSheet

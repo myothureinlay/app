@@ -36,6 +36,7 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 function MainTabs() {
   const { theme, settings } = useAppPreferences();
   const { t } = useI18n();
+  const isAurora = settings.theme === 'auroraGlass';
 
   return (
     <View style={{ flex: 1 }}>
@@ -45,7 +46,7 @@ function MainTabs() {
           tabBarActiveTintColor: theme.colors.primary,
           tabBarInactiveTintColor: theme.colors.tabInactive,
           tabBarStyle: {
-            backgroundColor: theme.colors.surface,
+            backgroundColor: isAurora ? '#0A1829E8' : theme.colors.surface,
             borderTopColor: theme.colors.border,
             height: 72,
             paddingTop: 8,
@@ -55,7 +56,7 @@ function MainTabs() {
             borderRadius: theme.radius.md + 8,
             borderTopWidth: 0,
             borderWidth: 1,
-            elevation: theme.elevation.card,
+            elevation: isAurora ? 4 : theme.elevation.card,
           },
           tabBarLabelStyle: {
             fontWeight: '800',
@@ -63,7 +64,7 @@ function MainTabs() {
           },
           tabBarIcon: ({ color, size }) => {
             const icon = iconForTab(route.name);
-            return <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={size} color={color} />;
+            return <Ionicons name={iconForStyle(icon, settings.iconStyle) as never} size={Math.max(22, size)} color={color} />;
           },
         })}
       >
