@@ -9,15 +9,18 @@ import {
   createCategory,
   createCurrency,
   createGoal,
+  createInvestment,
   createTransaction,
   createWallet,
   deleteTransaction,
+  deleteInvestment,
   exportBackupPayload,
   fetchBackupMetadata,
   fetchBudgets,
   fetchCategories,
   fetchCurrencies,
   fetchGoals,
+  fetchInvestments,
   fetchTransactionById,
   fetchTransactions,
   fetchWallets,
@@ -33,6 +36,7 @@ import {
   updateCategory,
   updateCurrency,
   updateGoal,
+  updateInvestment,
   updateTransaction,
 } from '../database/repository';
 import type {
@@ -47,6 +51,7 @@ import type {
   Goal,
   GoalContribution,
   GoalWithProgress,
+  InvestmentRecord,
   UpdateTransactionInput,
   TransactionWithMeta,
   Wallet,
@@ -62,6 +67,7 @@ interface FinanceContextValue {
   goals: GoalWithProgress[];
   backupMetadata: BackupMetadata[];
   transactions: TransactionWithMeta[];
+  investments: InvestmentRecord[];
   refresh: () => Promise<void>;
   addTransaction: (input: CreateTransactionInput) => Promise<void>;
   editTransaction: (input: UpdateTransactionInput) => Promise<void>;
@@ -69,8 +75,8 @@ interface FinanceContextValue {
   restoreDeletedTransaction: (id: string) => Promise<void>;
   addWallet: (input: Pick<Wallet, 'name' | 'currency' | 'balance' | 'color' | 'icon'>) => Promise<void>;
   removeWalletById: (id: string) => Promise<RemoveDecision>;
-  addCategory: (input: Pick<Category, 'name' | 'type' | 'color' | 'icon'>) => Promise<void>;
-  editCategory: (input: Pick<Category, 'id' | 'name' | 'type' | 'color' | 'icon'>) => Promise<void>;
+  addCategory: (input: Pick<Category, 'name' | 'type' | 'color' | 'icon'> & { parentId?: string | null }) => Promise<void>;
+  editCategory: (input: Pick<Category, 'id' | 'name' | 'type' | 'color' | 'icon'> & { parentId?: string | null }) => Promise<void>;
   removeCategoryById: (id: string) => Promise<RemoveDecision>;
   addCurrency: (input: Pick<CurrencyDefinition, 'code' | 'name' | 'symbol' | 'decimalPlaces' | 'type' | 'isFavorite'>) => Promise<void>;
   editCurrency: (input: Pick<CurrencyDefinition, 'code' | 'name' | 'symbol' | 'decimalPlaces' | 'type' | 'isFavorite' | 'isActive'>) => Promise<void>;
@@ -82,6 +88,9 @@ interface FinanceContextValue {
   editGoal: (input: Goal) => Promise<void>;
   removeGoalById: (id: string) => Promise<void>;
   addContribution: (input: Omit<GoalContribution, 'id' | 'createdAt'>) => Promise<void>;
+  addInvestment: (input: Omit<InvestmentRecord, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) => Promise<void>;
+  editInvestment: (input: InvestmentRecord) => Promise<void>;
+  removeInvestmentById: (id: string) => Promise<void>;
   getTransactions: (filters?: TransactionFilters) => Promise<TransactionWithMeta[]>;
   getTransaction: (id: string, includeDeleted?: boolean) => Promise<TransactionWithMeta | null>;
   createCsv: () => string;
@@ -102,14 +111,16 @@ export function FinanceProvider({ children }: PropsWithChildren) {
   const [goals, setGoals] = useState<GoalWithProgress[]>([]);
   const [backupMetadata, setBackupMetadata] = useState<BackupMetadata[]>([]);
   const [transactions, setTransactions] = useState<TransactionWithMeta[]>([]);
+  const [investments, setInvestments] = useState<InvestmentRecord[]>([]);
 
   const refresh = async () => {
-    const [nextWallets, nextCategories, nextCurrencies, nextTransactions, nextBackupMetadata] = await Promise.all([
+    const [nextWallets, nextCategories, nextCurrencies, nextTransactions, nextBackupMetadata, nextInvestments] = await Promise.all([
       fetchWallets(),
       fetchCategories(),
       fetchCurrencies(),
       fetchTransactions(),
       fetchBackupMetadata(),
+      fetchInvestments(),
     ]);
     const [nextBudgets, nextGoals] = await Promise.all([
       fetchBudgets(false, nextTransactions),
@@ -122,6 +133,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     setGoals(nextGoals);
     setBackupMetadata(nextBackupMetadata);
     setTransactions(nextTransactions);
+    setInvestments(nextInvestments);
     setIsReady(true);
   };
 
@@ -142,6 +154,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       goals,
       backupMetadata,
       transactions,
+      investments,
       refresh,
       addTransaction: async (input) => {
         await createTransaction(input);
@@ -221,6 +234,18 @@ export function FinanceProvider({ children }: PropsWithChildren) {
         await addGoalContribution(input);
         await refresh();
       },
+      addInvestment: async (input) => {
+        await createInvestment(input);
+        await refresh();
+      },
+      editInvestment: async (input) => {
+        await updateInvestment(input);
+        await refresh();
+      },
+      removeInvestmentById: async (id) => {
+        await deleteInvestment(id);
+        await refresh();
+      },
       getTransactions: fetchTransactions,
       getTransaction: fetchTransactionById,
       createCsv: () => buildTransactionsCsv(transactions),
@@ -236,7 +261,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
         await refresh();
       },
     }),
-    [isReady, wallets, categories, currencies, budgets, goals, backupMetadata, transactions]
+    [isReady, wallets, categories, currencies, budgets, goals, backupMetadata, transactions, investments]
   );
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;

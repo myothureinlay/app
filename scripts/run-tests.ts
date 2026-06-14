@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 
 import { calculateBudgetUsage, enrichBudgetWithUsage } from '../src/logic/budgets';
+import { buildCategoryTree, categoryDisplayName } from '../src/logic/categories';
 import { dateRangeForPreset, formatDateRangeLabel, isWithinDateRange } from '../src/logic/dateRanges';
 import { applyGoalContribution, calculateGoalProgress } from '../src/logic/goals';
+import { calculateInvestmentSummary, investmentAllocation } from '../src/logic/investments';
 import { categoryTypeForTransaction, getWalletDeltas } from '../src/logic/ledger';
-import { calculateReportSummary, groupTransactionsByCategory } from '../src/logic/reports';
+import { calculateReportSummary, groupTransactionsByCategory, groupTransactionsByParentCategory, groupTransactionsBySubcategory } from '../src/logic/reports';
 import { getCategoryRemoveDecision, getWalletRemoveDecision } from '../src/logic/removal';
-import type { Budget, Goal, TransactionType, TransactionWithMeta } from '../src/types';
+import { iconForTab, mainTabConfig } from '../src/navigation/tabConfig';
+import type { Budget, Category, Goal, InvestmentRecord, TransactionType, TransactionWithMeta } from '../src/types';
 
 function tx(type: TransactionType, amount: number, overrides: Partial<TransactionWithMeta> = {}): TransactionWithMeta {
   return {
@@ -19,6 +22,8 @@ function tx(type: TransactionType, amount: number, overrides: Partial<Transactio
     toAmount: null,
     toCurrency: null,
     categoryId: overrides.categoryId ?? `${type}-category`,
+    parentCategoryId: overrides.parentCategoryId ?? overrides.categoryId ?? `${type}-category`,
+    subcategoryId: overrides.subcategoryId ?? null,
     date: '2026-06-01T12:00:00.000Z',
     note: null,
     exchangeRate: 1,
@@ -38,6 +43,54 @@ function tx(type: TransactionType, amount: number, overrides: Partial<Transactio
     categoryName: overrides.categoryName ?? type,
     categoryColor: overrides.categoryColor ?? '#16A34A',
     categoryIcon: null,
+    parentCategoryName: overrides.parentCategoryName ?? overrides.categoryName ?? type,
+    parentCategoryColor: overrides.parentCategoryColor ?? overrides.categoryColor ?? '#16A34A',
+    parentCategoryIcon: null,
+    subcategoryName: overrides.subcategoryName ?? null,
+    subcategoryColor: overrides.subcategoryColor ?? null,
+    subcategoryIcon: null,
+    ...overrides,
+  };
+}
+
+function category(overrides: Partial<Category> = {}): Category {
+  return {
+    id: 'cat-food',
+    parentId: null,
+    name: 'Food',
+    type: 'expense',
+    icon: 'restaurant-outline',
+    color: '#ff0000',
+    sortOrder: 0,
+    isDefault: true,
+    isArchived: false,
+    removedAt: null,
+    createdAt: '2026-06-01T00:00:00.000Z',
+    updatedAt: '2026-06-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+function investment(overrides: Partial<InvestmentRecord> = {}): InvestmentRecord {
+  return {
+    id: 'inv-btc',
+    type: 'buy',
+    assetType: 'crypto',
+    assetName: 'BTC',
+    quantity: 1,
+    unitPrice: 100,
+    amount: 100,
+    currency: 'USD',
+    walletId: null,
+    transactionId: null,
+    currentValue: null,
+    realizedProfitLoss: 0,
+    unrealizedProfitLoss: 0,
+    date: '2026-06-01T12:00:00.000Z',
+    note: null,
+    deletedAt: null,
+    createdAt: '2026-06-01T00:00:00.000Z',
+    updatedAt: '2026-06-01T00:00:00.000Z',
     ...overrides,
   };
 }
@@ -158,6 +211,75 @@ function run() {
   assert.equal(grouped[0].label, 'Food', 'category report groups by category name');
   assert.equal(grouped[0].total, 50, 'category report totals amounts');
 
+  const hierarchicalGrouped = groupTransactionsByParentCategory(
+    [
+      tx('expense', 20, {
+        categoryId: 'food-dining',
+        parentCategoryId: 'food',
+        subcategoryId: 'dining',
+        parentCategoryName: 'Food',
+        subcategoryName: 'Dining out',
+      }),
+      tx('expense', 30, {
+        categoryId: 'food-groceries',
+        parentCategoryId: 'food',
+        subcategoryId: 'groceries',
+        parentCategoryName: 'Food',
+        subcategoryName: 'Groceries',
+      }),
+    ],
+    'USD',
+    'expense'
+  );
+  assert.equal(hierarchicalGrouped[0].label, 'Food', 'parent category report groups multiple subcategories');
+  assert.equal(hierarchicalGrouped[0].total, 50, 'parent category report totals subcategories');
+
+  const subcategoryGrouped = groupTransactionsBySubcategory(
+    [
+      tx('expense', 12, { parentCategoryId: 'food', subcategoryId: 'dining', subcategoryName: 'Dining out' }),
+      tx('expense', 8, { parentCategoryId: 'food', subcategoryId: 'dining', subcategoryName: 'Dining out' }),
+    ],
+    'USD',
+    'expense'
+  );
+  assert.equal(subcategoryGrouped[0].label, 'Dining out', 'subcategory report groups by child category');
+  assert.equal(subcategoryGrouped[0].total, 20, 'subcategory report totals amounts');
+
+  const categoryTree = buildCategoryTree([
+    category({ id: 'food', name: 'Food', sortOrder: 2 }),
+    category({ id: 'housing', name: 'Housing', sortOrder: 1 }),
+    category({ id: 'dining', parentId: 'food', name: 'Dining out', sortOrder: 1 }),
+    category({ id: 'groceries', parentId: 'food', name: 'Groceries', sortOrder: 0 }),
+  ]);
+  assert.deepEqual(categoryTree.map((node) => node.id), ['housing', 'food'], 'category tree sorts parent categories');
+  assert.deepEqual(categoryTree.find((node) => node.id === 'food')?.children.map((node) => node.id), ['groceries', 'dining'], 'category tree sorts subcategories');
+  assert.equal(categoryDisplayName(categoryTree.flatMap((node) => [node, ...node.children]), 'dining'), 'Food -> Dining out', 'category display includes parent path');
+
+  const investmentSummary = calculateInvestmentSummary(
+    [
+      investment({ type: 'buy', amount: 100, currentValue: 130, unrealizedProfitLoss: 30 }),
+      investment({ id: 'inv-sell', type: 'sell', amount: 25, currentValue: 0, realizedProfitLoss: 5 }),
+      investment({ id: 'inv-fee', type: 'fee', amount: 2, currentValue: 0 }),
+      investment({ id: 'inv-income', type: 'income', amount: 3, currentValue: 0 }),
+      investment({ id: 'inv-deleted', amount: 999, deletedAt: '2026-06-02T00:00:00.000Z' }),
+    ],
+    'USD'
+  );
+  assert.equal(investmentSummary.totalInvested, 75, 'investment summary nets buys and sells');
+  assert.equal(investmentSummary.currentValue, 130, 'investment summary uses user-entered current value');
+  assert.equal(investmentSummary.realizedProfitLoss, 5, 'investment summary totals realized profit/loss');
+  assert.equal(investmentSummary.unrealizedProfitLoss, 30, 'investment summary totals unrealized profit/loss');
+  assert.equal(investmentSummary.fees, 2, 'investment summary tracks fees');
+  assert.equal(investmentSummary.income, 3, 'investment summary tracks investment income');
+  assert.equal(investmentAllocation([investment({ assetType: 'crypto' }), investment({ id: 'inv-gold', assetType: 'gold', amount: 80, currentValue: 90 })], 'USD').length, 2, 'investment allocation groups by asset type');
+
+  assert.deepEqual(
+    mainTabConfig.map((tab) => tab.name),
+    ['Dashboard', 'Records', 'Reports', 'Investments'],
+    'V7 bottom tabs are exactly Dashboard, Records, Reports, Investments'
+  );
+  assert.equal(iconForTab('Records'), 'receipt-outline', 'records tab uses receipt icon');
+
   assert.equal(getCategoryRemoveDecision(0).action, 'hard_delete', 'unused category can be hard deleted');
   const usedCategoryDecision = getCategoryRemoveDecision(2);
   assert.equal(usedCategoryDecision.action, 'soft_remove', 'used category is soft removed');
@@ -225,4 +347,4 @@ function run() {
 }
 
 run();
-console.log('Ledger V4 tests passed');
+console.log('Ledger V7 tests passed');

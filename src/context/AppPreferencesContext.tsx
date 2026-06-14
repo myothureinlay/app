@@ -82,11 +82,13 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
     load().catch(() => setI18nLocale(defaultSettings.language));
   }, []);
 
-  const resolvedTheme: ThemePreset =
+  const preferredTheme =
     settings.theme === 'system' || settings.theme === 'custom'
       ? (systemScheme === 'dark' ? 'dark' : 'light')
       : settings.theme;
-  const activeTheme = themes[resolvedTheme];
+  const fallbackTheme: ThemePreset = systemScheme === 'dark' ? 'dark' : 'light';
+  const resolvedTheme: ThemePreset = themes[preferredTheme as ThemePreset] ? (preferredTheme as ThemePreset) : fallbackTheme;
+  const activeTheme = themes[resolvedTheme] ?? themes.light;
   const resolvedScheme: ColorSchemeName = activeTheme.scheme;
 
   const updateSettings = async (patch: Partial<AppSettings>) => {
