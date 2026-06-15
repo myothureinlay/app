@@ -1,7 +1,7 @@
 export const BUILD_INFO = {
-  appVersion: '7.1.0',
-  label: 'Mobile V7.1 UI polish and Aurora Glass',
-  shortLabel: 'Build: Mobile V7.1',
-  buildId: 'V7.1-20260614',
-  buildDate: '2026-06-14',
+  appVersion: '7.2.0',
+  label: 'Mobile V7.2 profile, report insights, and bug fixes',
+  shortLabel: 'Build: Mobile V7.2',
+  buildId: 'V7.2-20260615',
+  buildDate: '2026-06-15',
 };

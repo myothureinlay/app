@@ -14,7 +14,7 @@ import { getCurrencyBadge } from '../constants/currencies';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useFinance } from '../context/FinanceContext';
 import { useI18n } from '../i18n/useI18n';
-import type { BackupPayload, BaseCurrency, IconStyle } from '../types';
+import type { BackupPayload, BaseCurrency } from '../types';
 import { pickJsonFile, saveAndShareFile } from '../utils/files';
 import { buildExcelCompatibleReport, buildReportImageSvg, buildReportPdf } from '../utils/reportExports';
 
@@ -135,16 +135,6 @@ export function SettingsScreen() {
           icon="language-outline"
           variant="secondary"
           onPress={() => navigation.navigate('LanguagePicker' as never)}
-        />
-        <PickerField
-          label={t('settings.iconStyle')}
-          value={settings.iconStyle}
-          onChange={(iconStyle) => updateSettings({ iconStyle: iconStyle as IconStyle })}
-          options={[
-            { label: t('settings.lineIcons'), value: 'line', icon: 'ellipse-outline', color: theme.colors.primary },
-            { label: t('settings.filledIcons'), value: 'filled', icon: 'ellipse', color: theme.colors.secondary },
-          ]}
-          icon="sparkles-outline"
         />
       </Card>
 

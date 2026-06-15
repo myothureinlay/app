@@ -12,6 +12,7 @@ import { AddTransactionScreen } from '../screens/AddTransactionScreen';
 import { BudgetsScreen } from '../screens/BudgetsScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { EditTransactionScreen } from '../screens/EditTransactionScreen';
+import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { GoalsScreen } from '../screens/GoalsScreen';
 import { GoogleBackupScreen } from '../screens/GoogleBackupScreen';
 import { LanguagePickerScreen } from '../screens/LanguagePickerScreen';
@@ -136,6 +137,7 @@ export function AppNavigator() {
           component={EditTransactionScreen}
           options={{ title: t('nav.editTransaction') }}
         />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: t('profile.editTitle') }} />
         <Stack.Screen name="ThemePicker" component={ThemePickerScreen} options={{ title: t('nav.themes') }} />
         <Stack.Screen name="LanguagePicker" component={LanguagePickerScreen} options={{ title: t('nav.languages') }} />
         <Stack.Screen name="ManageCurrencies" component={ManageCurrenciesScreen} options={{ title: t('nav.currencies') }} />

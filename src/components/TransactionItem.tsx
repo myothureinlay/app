@@ -2,10 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 
 import { useAppPreferences } from '../context/AppPreferencesContext';
+import { formatTransactionBaseAmount, formatTransactionPrimaryAmount } from '../logic/transactionDisplay';
 import { isExpenseLike, isIncomeLike, transactionTypeIcons } from '../logic/ledger';
 import type { TransactionWithMeta } from '../types';
 import { formatDate } from '../utils/dates';
-import { formatMoney } from '../utils/money';
 
 interface TransactionItemProps {
   transaction: TransactionWithMeta;
@@ -18,6 +18,7 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
   const isIncome = isIncomeLike(transaction.type);
   const color = isIncome ? theme.colors.success : isExpense ? theme.colors.danger : theme.colors.secondary;
   const title = transaction.categoryName ?? transaction.type.replace(/_/g, ' ');
+  const baseAmountLabel = formatTransactionBaseAmount(transaction);
   const locale =
     settings.language === 'th'
       ? 'th-TH'
@@ -62,12 +63,9 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
       </View>
       <View style={{ alignItems: 'flex-end', gap: 3 }}>
         <Text style={{ color, fontSize: 15, fontWeight: '900' }} numberOfLines={1}>
-          {isExpense ? '-' : isIncome ? '+' : ''}
-          {formatMoney(transaction.amount, transaction.currency)}
+          {formatTransactionPrimaryAmount(transaction)}
         </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
-          {formatMoney(transaction.baseAmount, transaction.baseCurrency)}
-        </Text>
+        {baseAmountLabel ? <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{baseAmountLabel}</Text> : null}
       </View>
     </Pressable>
   );

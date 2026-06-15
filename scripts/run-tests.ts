@@ -1,15 +1,32 @@
 import assert from 'node:assert/strict';
 
 import { calculateBudgetUsage, enrichBudgetWithUsage } from '../src/logic/budgets';
+import { manualSections } from '../src/constants/manual';
+import { en } from '../src/i18n/locales/en';
+import { my } from '../src/i18n/locales/my';
+import { th } from '../src/i18n/locales/th';
+import { zhHans } from '../src/i18n/locales/zh-Hans';
 import { buildCategoryTree, categoryDisplayName } from '../src/logic/categories';
 import { dateRangeForPreset, formatDateRangeLabel, isWithinDateRange } from '../src/logic/dateRanges';
 import { applyGoalContribution, calculateGoalProgress } from '../src/logic/goals';
 import { calculateInvestmentSummary, investmentAllocation } from '../src/logic/investments';
 import { categoryTypeForTransaction, getWalletDeltas } from '../src/logic/ledger';
-import { calculateReportSummary, groupTransactionsByCategory, groupTransactionsByParentCategory, groupTransactionsBySubcategory } from '../src/logic/reports';
+import { mergeUserProfile, normalizeUserProfile } from '../src/logic/profile';
+import {
+  calculateReportSummary,
+  generateReportInsights,
+  groupTransactionsByCategory,
+  groupTransactionsByParentCategory,
+  groupTransactionsBySubcategory,
+  monthlyIncomeExpense,
+} from '../src/logic/reports';
+import { formatTransactionBaseAmount, formatTransactionPrimaryAmount } from '../src/logic/transactionDisplay';
+import { initialTransactionCurrencyState } from '../src/logic/transactionFormState';
 import { getCategoryRemoveDecision, getWalletRemoveDecision } from '../src/logic/removal';
 import { iconForTab, mainTabConfig } from '../src/navigation/tabConfig';
-import type { Budget, Category, Goal, InvestmentRecord, TransactionType, TransactionWithMeta } from '../src/types';
+import { iconForStyle } from '../src/utils/icons';
+import { formatMoney } from '../src/utils/money';
+import type { AppSettings, BackupPayload, Budget, Category, Goal, InvestmentRecord, TransactionType, TransactionWithMeta } from '../src/types';
 
 function tx(type: TransactionType, amount: number, overrides: Partial<TransactionWithMeta> = {}): TransactionWithMeta {
   return {
@@ -344,6 +361,137 @@ function run() {
   const completedGoal = applyGoalContribution(emergencyGoal, { amount: 300 });
   assert.equal(completedGoal.currentAmount, 500, 'goal contribution increases current amount');
   assert.equal(completedGoal.status, 'completed', 'goal contribution completes target');
+
+  const thbExpense = tx('expense', 300, {
+    currency: 'THB',
+    baseCurrency: 'USD',
+    baseAmount: 8.5,
+    exchangeRate: 0.0283333333,
+  });
+  const thbEditState = initialTransactionCurrencyState(thbExpense, 'MMK', 'MMK');
+  assert.equal(thbEditState.currency, 'THB', 'edit state preserves THB transaction currency');
+  assert.equal(thbEditState.baseCurrency, 'USD', 'edit state preserves saved USD base currency');
+  assert.equal(thbEditState.baseAmount, 8.5, 'edit state preserves base amount');
+
+  const usdtIncome = tx('income', 125, {
+    currency: 'USDT',
+    baseCurrency: 'USD',
+    baseAmount: 125,
+    exchangeRate: 1,
+  });
+  const usdtEditState = initialTransactionCurrencyState(usdtIncome, 'MMK', 'MMK');
+  assert.equal(usdtEditState.currency, 'USDT', 'edit state preserves USDT income currency');
+  assert.equal(usdtEditState.baseCurrency, 'USD', 'edit state preserves USDT income base currency');
+
+  const exchangeRecord = tx('exchange', 100, {
+    currency: 'USDT',
+    baseCurrency: 'USD',
+    baseAmount: 100,
+    exchangeRate: 1,
+    toWalletId: 'cash-mmk',
+    toAmount: 360000,
+    toCurrency: 'MMK',
+  });
+  const exchangeEditState = initialTransactionCurrencyState(exchangeRecord, 'THB', 'THB');
+  assert.equal(exchangeEditState.currency, 'USDT', 'exchange edit preserves source currency');
+  assert.equal(exchangeEditState.baseCurrency, 'USD', 'exchange edit preserves base currency');
+  assert.equal(exchangeEditState.toCurrency, 'MMK', 'exchange edit preserves destination currency');
+  assert.equal(exchangeEditState.toAmount, 360000, 'exchange edit preserves destination amount');
+
+  assert.equal(formatMoney(-300, 'MMK'), '-Ks 300', 'negative MMK formats cleanly');
+  assert.equal(formatMoney(-15, 'THB'), '-฿ 15.00', 'negative THB formats cleanly');
+  assert.equal(formatMoney(-1.25, 'USDT'), '-1.25 USDT', 'negative USDT formats cleanly');
+  assert.equal(formatTransactionPrimaryAmount(thbExpense), '-฿ 300.00', 'records primary amount shows original currency');
+  assert.equal(formatTransactionBaseAmount(thbExpense), '-$ 8.50', 'records base line shows base amount when currencies differ');
+  assert.equal(formatTransactionBaseAmount(tx('expense', 10, { currency: 'USD', baseCurrency: 'USD', baseAmount: 10 })), null, 'records suppress redundant base line');
+
+  const reportTransactions = [
+    tx('income', 1000, { categoryId: 'salary', categoryName: 'Salary' }),
+    tx('expense', 850, { categoryId: 'food', categoryName: 'Food & Drinks', categoryColor: '#ff0000' }),
+    tx('fee', 50, { categoryId: 'fees', categoryName: 'Fees' }),
+  ];
+  const reportSummary = calculateReportSummary(reportTransactions, 'USD');
+  const reportCategories = groupTransactionsByCategory(reportTransactions, 'USD', 'expense');
+  const reportTrend = monthlyIncomeExpense(reportTransactions, 'USD', 2);
+  const reportInsights = generateReportInsights({
+    transactions: reportTransactions,
+    summary: reportSummary,
+    expenseByCategory: reportCategories,
+    trend: reportTrend,
+    budgets: [
+      {
+        ...enrichBudgetWithUsage(budget({ categoryId: 'food', amountLimit: 500 }), reportTransactions, 'Food & Drinks', '#ff0000'),
+        isOverBudget: true,
+      },
+    ],
+    goals: [calculateGoalProgress(goal())],
+    investments: [
+      investment({ assetName: 'BTC', amount: 900, currentValue: 900 }),
+      investment({ id: 'inv-gold', assetType: 'gold', assetName: 'Gold', amount: 100, currentValue: 100 }),
+    ],
+    baseCurrency: 'USD',
+  });
+  assert.equal(generateReportInsights({ transactions: [], summary: calculateReportSummary([], 'USD'), expenseByCategory: [], trend: [], baseCurrency: 'USD' })[0].type, 'no_data', 'insights handle no data');
+  assert.ok(reportInsights.some((insight) => insight.type === 'positive_cashflow'), 'insights include positive cashflow');
+  assert.ok(reportInsights.some((insight) => insight.type === 'high_expense_ratio'), 'insights include high expense ratio');
+  assert.ok(reportInsights.some((insight) => insight.type === 'top_category' && insight.label === 'Food & Drinks'), 'insights identify top category');
+  assert.ok(reportInsights.some((insight) => insight.type === 'budget_warning'), 'insights warn on budget overrun');
+  assert.ok(reportInsights.some((insight) => insight.type === 'goal_suggestion'), 'insights suggest goal funding when surplus exists');
+  assert.ok(reportInsights.some((insight) => insight.type === 'investment_concentration'), 'insights identify investment concentration');
+
+  const negativeInsights = generateReportInsights({
+    transactions: [tx('income', 100), tx('expense', 300, { categoryId: 'food', categoryName: 'Food' })],
+    summary: calculateReportSummary([tx('income', 100), tx('expense', 300, { categoryId: 'food', categoryName: 'Food' })], 'USD'),
+    expenseByCategory: groupTransactionsByCategory([tx('expense', 300, { categoryId: 'food', categoryName: 'Food' })], 'USD', 'expense'),
+    trend: [],
+    baseCurrency: 'USD',
+  });
+  assert.ok(negativeInsights.some((insight) => insight.type === 'negative_cashflow'), 'insights include negative cashflow warning');
+
+  const profile = normalizeUserProfile({ displayName: ' Myoe ', gender: 'bad' as never, planType: 'pro' });
+  assert.equal(profile.displayName, 'Myoe', 'profile normalizes display name');
+  assert.equal(profile.gender, 'prefer_not_to_say', 'profile falls back for invalid gender');
+  assert.equal(profile.planType, 'pro', 'profile preserves valid plan');
+  const updatedProfile = mergeUserProfile(profile, { mobileNumber: '09123456789' }, '2026-06-15T00:00:00.000Z');
+  assert.equal(updatedProfile.mobileNumber, '09123456789', 'profile update persists mobile number');
+  assert.equal(updatedProfile.updatedAt, '2026-06-15T00:00:00.000Z', 'profile update stamps updatedAt');
+
+  assert.equal(iconForStyle('wallet-outline', 'filled'), 'wallet-outline', 'icon style utility keeps line icons only');
+  assert.equal(manualSections.length, 25, 'manual exposes 25 sections');
+  assert.equal(manualSections.map((section) => String(section.key)).includes('themesIconStyle'), false, 'manual no longer exposes icon style setting');
+  for (const locale of [en, my, th, zhHans]) {
+    const manual = locale.manual as Record<string, { title?: string; body?: string }>;
+    for (const section of manualSections) {
+      assert.ok(manual[section.key]?.title, `manual title exists for ${section.key}`);
+      assert.ok(manual[section.key]?.body, `manual body exists for ${section.key}`);
+    }
+  }
+  assert.equal(en.about.publisherBody, 'MyoeThuShein', 'about developer name is set');
+  assert.ok(en.about.supportEmail.includes('myoethureinlay@gmail.com'), 'about support email is set');
+  assert.ok(en.about.privacyPolicyBody.includes('stored locally'), 'about privacy policy explains local storage');
+  assert.ok(en.about.termsBody.includes('informational'), 'about terms mention informational reports');
+
+  const settings: AppSettings = {
+    theme: 'system',
+    language: 'en',
+    baseCurrency: 'USD',
+    dashboardCurrencyFilter: 'all',
+    iconStyle: 'line',
+    profile: updatedProfile,
+  };
+  const backupPayload: BackupPayload = {
+    version: 4,
+    exportedAt: '2026-06-15T00:00:00.000Z',
+    settings,
+    wallets: [],
+    categories: [],
+    transactions: [thbExpense, usdtIncome, exchangeRecord],
+  };
+  const roundTrippedBackup = JSON.parse(JSON.stringify(backupPayload)) as BackupPayload;
+  assert.equal(roundTrippedBackup.transactions[0].currency, 'THB', 'JSON backup preserves transaction currency');
+  assert.equal(roundTrippedBackup.transactions[0].baseCurrency, 'USD', 'JSON backup preserves base currency');
+  assert.equal(roundTrippedBackup.transactions[2].toCurrency, 'MMK', 'JSON backup preserves exchange destination currency');
+  assert.equal(roundTrippedBackup.settings.profile?.planType, 'pro', 'JSON backup preserves profile fields');
 }
 
 run();

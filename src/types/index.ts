@@ -60,6 +60,8 @@ export type ThemePreference = ThemePreset | 'system' | 'custom';
 export type LanguageCode = 'en' | 'my' | 'th' | 'zh-Hans';
 export type CurrencyFilter = 'all' | CurrencyCode;
 export type IconStyle = 'line' | 'filled';
+export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
+export type PlanType = 'free' | 'pro';
 
 export interface WidgetPreferences {
   order: string[];
@@ -77,6 +79,7 @@ export interface AppSettings {
   baseCurrency: BaseCurrency;
   dashboardCurrencyFilter: CurrencyFilter;
   iconStyle: IconStyle;
+  profile?: UserProfile;
   accentColor?: string;
   showRemovedWallets?: boolean;
   googleAutoBackup?: 'off' | 'daily' | 'weekly' | 'monthly';
@@ -85,6 +88,18 @@ export interface AppSettings {
   dashboardWidgets?: WidgetPreferences;
   reportWidgets?: WidgetPreferences;
   notifications?: NotificationPreferences;
+}
+
+export interface UserProfile {
+  id: string;
+  displayName: string;
+  dateOfBirth: string;
+  mobileNumber: string;
+  gender: Gender;
+  planType: PlanType;
+  profileImageUri?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CustomThemeSettings {
