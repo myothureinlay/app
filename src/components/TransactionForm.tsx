@@ -14,6 +14,7 @@ import {
   transactionTypeIcons,
   transactionTypes,
 } from '../logic/ledger';
+import { initialTransactionCurrencyState } from '../logic/transactionFormState';
 import type { BaseCurrency, CreateTransactionInput, CurrencyCode, Transaction, TransactionType } from '../types';
 import { parseNumber } from '../utils/money';
 import { AmountInput } from './AmountInput';
@@ -46,14 +47,19 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ initialTransaction, initialType, submitLabel, onSubmit }: TransactionFormProps) {
-  const { theme, settings, setBaseCurrency } = useAppPreferences();
+  const { theme, settings } = useAppPreferences();
   const { wallets, categories, currencies } = useFinance();
   const { t } = useI18n();
 
   const firstWallet = wallets[0];
+  const initialCurrencyState = initialTransactionCurrencyState(
+    initialTransaction,
+    settings.baseCurrency,
+    firstWallet?.currency ?? 'USDT'
+  );
   const [type, setType] = useState<TransactionType>(initialTransaction?.type ?? initialType ?? 'expense');
   const [amount, setAmount] = useState(initialTransaction ? String(initialTransaction.amount) : '');
-  const [currency, setCurrency] = useState<CurrencyCode>(initialTransaction?.currency ?? firstWallet?.currency ?? 'USDT');
+  const [currency, setCurrency] = useState<CurrencyCode>(initialCurrencyState.currency);
   const [walletId, setWalletId] = useState(initialTransaction?.walletId ?? firstWallet?.id ?? '');
   const [toWalletId, setToWalletId] = useState(initialTransaction?.toWalletId ?? '');
   const [receivedAmount, setReceivedAmount] = useState(initialTransaction?.toAmount ? String(initialTransaction.toAmount) : '');
@@ -65,8 +71,8 @@ export function TransactionForm({ initialTransaction, initialType, submitLabel, 
   const [counterparty, setCounterparty] = useState(initialTransaction?.counterparty ?? '');
   const [feeAmount, setFeeAmount] = useState(initialTransaction?.feeAmount ? String(initialTransaction.feeAmount) : '');
   const [feeCurrency, setFeeCurrency] = useState<CurrencyCode>(initialTransaction?.feeCurrency ?? currency);
-  const [baseCurrency, setBaseCurrencyState] = useState<BaseCurrency>(initialTransaction?.baseCurrency ?? settings.baseCurrency);
-  const [exchangeRate, setExchangeRate] = useState(String(initialTransaction?.exchangeRate ?? getRateToBase(settings.baseCurrency, currency)));
+  const [baseCurrency, setBaseCurrencyState] = useState<BaseCurrency>(initialCurrencyState.baseCurrency);
+  const [exchangeRate, setExchangeRate] = useState(initialCurrencyState.exchangeRate);
 
   const selectedWallet = wallets.find((wallet) => wallet.id === walletId);
   const toWallet = wallets.find((wallet) => wallet.id === toWalletId);
@@ -262,10 +268,7 @@ export function TransactionForm({ initialTransaction, initialType, submitLabel, 
         <SelectField
           label={t('transaction.baseCurrency')}
           value={baseCurrency}
-          onChange={(value) => {
-            setBaseCurrencyState(value);
-            setBaseCurrency(value);
-          }}
+          onChange={setBaseCurrencyState}
           options={baseCurrencyOptions.map((item) => ({ value: item, label: item, icon: 'cash-outline', badge: getCurrencyBadge(item) }))}
           icon="cash-outline"
           searchable

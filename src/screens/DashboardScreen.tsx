@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
 import { BottomSheet } from '../components/BottomSheet';
@@ -79,22 +79,22 @@ function SummaryTile({
   const { theme } = useAppPreferences();
 
   return (
-    <Card style={{ flex: 1, gap: 10, padding: 12, minHeight: 104 }}>
+    <Card style={{ flex: 1, gap: 7, padding: 10, minHeight: 84 }}>
       <View
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: 9,
+          width: 28,
+          height: 28,
+          borderRadius: 8,
           backgroundColor: `${color}18`,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={icon as never} size={17} color={color} />
+        <Ionicons name={icon as never} size={16} color={color} />
       </View>
       <View style={{ gap: 3 }}>
         <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontWeight: '800' }}>{label}</Text>
-        <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
+        <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
           {value}
         </Text>
       </View>
@@ -104,7 +104,7 @@ function SummaryTile({
 
 export function DashboardScreen() {
   const navigation = useNavigation<any>();
-  const { theme, settings, updateSettings } = useAppPreferences();
+  const { theme, settings, profile, updateSettings } = useAppPreferences();
   const { isReady, wallets, currencies, budgets, goals, transactions } = useFinance();
   const { t } = useI18n();
   const [customizeVisible, setCustomizeVisible] = useState(false);
@@ -149,18 +149,20 @@ export function DashboardScreen() {
   );
   const activeDashboardWidgets = visibleWidgets(dashboardWidgets, settings.dashboardWidgets);
   const isAurora = settings.theme === 'auroraGlass';
+  const profileName = profile.displayName || t('profile.guestUser');
+  const planLabel = profile.planType === 'pro' ? t('profile.pro') : t('profile.free');
   const accountSections = [
+    {
+      title: t('profile.sectionTitle'),
+      rows: [
+        { route: 'EditProfile', label: t('profile.editProfile'), icon: 'person-outline' },
+      ],
+    },
     {
       title: t('settings.appearance'),
       rows: [
         { route: 'ThemePicker', label: t('settings.themePicker'), icon: 'color-palette-outline' },
         { route: 'LanguagePicker', label: t('settings.languagePicker'), icon: 'language-outline' },
-        {
-          route: 'Settings',
-          label: t('settings.iconStyle'),
-          icon: 'sparkles-outline',
-          detail: settings.iconStyle === 'filled' ? t('settings.filledIcons') : t('settings.lineIcons'),
-        },
         { route: 'Settings', label: t('settings.baseCurrency'), icon: 'cash-outline', detail: settings.baseCurrency },
       ],
     },
@@ -241,9 +243,14 @@ export function DashboardScreen() {
                       backgroundColor: pressed ? '#FFFFFF30' : '#FFFFFF22',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      overflow: 'hidden',
                     })}
                   >
-                    <Ionicons name="person-circle-outline" size={24} color="#FFFFFF" />
+                    {profile.profileImageUri ? (
+                      <Image source={{ uri: profile.profileImageUri }} style={{ width: '100%', height: '100%' }} />
+                    ) : (
+                      <Ionicons name="person-circle-outline" size={24} color="#FFFFFF" />
+                    )}
                   </Pressable>
                   <View
                     style={{
@@ -308,25 +315,26 @@ export function DashboardScreen() {
         );
       case 'monthlyIncome':
         return (
-          <SummaryTile
-            label={t('dashboard.monthlyIncome')}
-            value={formatMoney(summary.income, settings.baseCurrency)}
-            icon="trending-up-outline"
-            color={theme.colors.success}
-          />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <SummaryTile
+              label={t('dashboard.monthlyIncome')}
+              value={formatMoney(summary.income, settings.baseCurrency)}
+              icon="trending-up-outline"
+              color={theme.colors.success}
+            />
+            <SummaryTile
+              label={t('dashboard.monthlyExpenses')}
+              value={formatMoney(summary.expenses + summary.losses, settings.baseCurrency)}
+              icon="trending-down-outline"
+              color={theme.colors.danger}
+            />
+          </View>
         );
       case 'monthlyExpenses':
-        return (
-          <SummaryTile
-            label={t('dashboard.monthlyExpenses')}
-            value={formatMoney(summary.expenses + summary.losses, settings.baseCurrency)}
-            icon="trending-down-outline"
-            color={theme.colors.danger}
-          />
-        );
+        return null;
       case 'netCashflow':
         return (
-          <Card style={{ gap: 12 }}>
+          <Card style={{ gap: 9, padding: 11 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '900' }}>{t('dashboard.monthlyPulse')}</Text>
@@ -470,7 +478,10 @@ export function DashboardScreen() {
           onAction={() => setCustomizeVisible(true)}
         />
       ) : (
-        activeDashboardWidgets.map((widget) => <View key={widget.id}>{renderDashboardWidget(widget.id as DashboardWidgetId)}</View>)
+        activeDashboardWidgets.map((widget) => {
+          const rendered = renderDashboardWidget(widget.id as DashboardWidgetId);
+          return rendered ? <View key={widget.id}>{rendered}</View> : null;
+        })
       )}
 
       <Card style={{ padding: 12 }}>
@@ -493,6 +504,58 @@ export function DashboardScreen() {
         onClose={() => setCustomizeVisible(false)}
       />
       <BottomSheet visible={accountVisible} title={t('account.title')} onClose={() => setAccountVisible(false)}>
+        <Card style={{ gap: 12, backgroundColor: `${theme.colors.primary}10`, borderColor: `${theme.colors.primary}30` }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View
+              style={{
+                width: 58,
+                height: 58,
+                borderRadius: 29,
+                overflow: 'hidden',
+                backgroundColor: `${theme.colors.primary}18`,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {profile.profileImageUri ? (
+                <Image source={{ uri: profile.profileImageUri }} style={{ width: '100%', height: '100%' }} />
+              ) : (
+                <Ionicons name="person-circle-outline" size={38} color={theme.colors.primary} />
+              )}
+            </View>
+            <View style={{ flex: 1, gap: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ flex: 1, color: theme.colors.text, fontSize: 16, fontWeight: '900' }} numberOfLines={1}>
+                  {profileName}
+                </Text>
+                <View
+                  style={{
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 999,
+                    backgroundColor: profile.planType === 'pro' ? `${theme.colors.accent}20` : `${theme.colors.success}18`,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: profile.planType === 'pro' ? theme.colors.accent : theme.colors.success,
+                      fontSize: 11,
+                      fontWeight: '900',
+                    }}
+                  >
+                    {planLabel}
+                  </Text>
+                </View>
+              </View>
+              {profile.mobileNumber ? (
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '800' }} numberOfLines={1}>
+                  {profile.mobileNumber}
+                </Text>
+              ) : null}
+              <Text style={{ color: theme.colors.textMuted, fontSize: 12, lineHeight: 17 }}>{t('profile.localOnly')}</Text>
+            </View>
+          </View>
+        </Card>
         {accountSections.map((section) => (
           <View key={section.title} style={{ gap: 7 }}>
             <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '900' }}>{section.title}</Text>

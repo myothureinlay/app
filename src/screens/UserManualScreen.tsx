@@ -5,31 +5,14 @@ import { Pressable, Text, View } from 'react-native';
 import { Card } from '../components/Card';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { manualSections } from '../constants/manual';
 import { useAppPreferences } from '../context/AppPreferencesContext';
 import { useI18n } from '../i18n/useI18n';
-
-const manualSections = [
-  { key: 'gettingStarted', icon: 'rocket-outline' },
-  { key: 'wallets', icon: 'wallet-outline' },
-  { key: 'currencies', icon: 'cash-outline' },
-  { key: 'incomeExpenses', icon: 'swap-vertical-outline' },
-  { key: 'currencyExchange', icon: 'repeat-outline' },
-  { key: 'categories', icon: 'pricetags-outline' },
-  { key: 'budgets', icon: 'speedometer-outline' },
-  { key: 'goals', icon: 'flag-outline' },
-  { key: 'reportsDatePicker', icon: 'calendar-outline' },
-  { key: 'exports', icon: 'download-outline' },
-  { key: 'backupRestore', icon: 'archive-outline' },
-  { key: 'themesIconStyle', icon: 'color-palette-outline' },
-  { key: 'notifications', icon: 'notifications-outline' },
-  { key: 'troubleshooting', icon: 'construct-outline' },
-  { key: 'apkInstall', icon: 'phone-portrait-outline' },
-];
 
 export function UserManualScreen() {
   const { theme } = useAppPreferences();
   const { t } = useI18n();
-  const [openKey, setOpenKey] = useState(manualSections[0].key);
+  const [openKey, setOpenKey] = useState<string>(manualSections[0].key);
 
   return (
     <Screen>

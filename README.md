@@ -4,6 +4,30 @@ A React Native app built with Expo, TypeScript, and SQLite. It stores your finan
 
 This guide is written for beginners on macOS. The normal Android APK build path uses Expo EAS Build in the cloud, so you do not need to install Android Studio just to create an APK.
 
+## Version 7.2 Mobile V7.2
+
+- Fixes add/edit transaction currency and base currency preservation, including THB/USD, USDT/USD, and exchange records.
+- Adds a local profile system with display name, date of birth, mobile number, gender, Free/Pro plan display, and local avatar URI.
+- Removes user-facing icon style selection; the app uses line icons consistently.
+- Adds report insights based on local records, budgets, goals, and investments. No AI/API calls are used.
+- Updates About with developer/support, offline-first privacy placeholder, terms placeholder, backup safety, and Android installation notes.
+- Expands the User Manual in English, Burmese/Myanmar, Thai, and Simplified Chinese.
+- Keeps Android preview APK and adds production AAB build configuration for Google Play distribution.
+
+Preview APK:
+
+```bash
+eas build --platform android --profile preview --clear-cache
+```
+
+Production AAB:
+
+```bash
+eas build --platform android --profile production --clear-cache
+```
+
+See `docs/ANDROID_DISTRIBUTION_NOTES.md` for sideloading and Play Protect details.
+
 ## Version 7.1 Mobile V7.1
 
 - Adds the premium Aurora Glass theme with Expo-safe gradient, translucent card, tab, FAB, sheet, and picker styling.

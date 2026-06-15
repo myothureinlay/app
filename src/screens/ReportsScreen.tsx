@@ -30,6 +30,7 @@ import { dateRangeForPreset, formatDateRangeLabel, isWithinDateRange, type DateR
 import { reportColorByType, transactionTypeIcons, transactionTypes } from '../logic/ledger';
 import {
   calculateReportSummary,
+  generateReportInsights,
   groupExpensesByCurrency,
   groupTransactionsByCategory,
   groupTransactionsByParentCategory,
@@ -38,6 +39,7 @@ import {
   monthlyIncomeExpense,
   topIndividualExpenses,
   walletDistribution,
+  type ReportInsight,
 } from '../logic/reports';
 import type { CurrencyCode, TransactionType } from '../types';
 import { saveAndShareFile } from '../utils/files';
@@ -76,10 +78,14 @@ function csvLine(values: Array<string | number>) {
   return values.map(csvCell).join(',');
 }
 
+function fillTemplate(template: string, values: Record<string, string>) {
+  return Object.entries(values).reduce((text, [key, value]) => text.split(`{${key}}`).join(value), template);
+}
+
 export function ReportsScreen() {
   const navigation = useNavigation<any>();
   const { theme, settings, updateSettings } = useAppPreferences();
-  const { wallets, categories, currencies, transactions } = useFinance();
+  const { wallets, categories, currencies, transactions, budgets, goals, investments } = useFinance();
   const { t, locale } = useI18n();
   const [rangeMode, setRangeMode] = useState<RangeMode>('this_month');
   const [customFrom, setCustomFrom] = useState(new Date().toISOString().slice(0, 10));
@@ -180,6 +186,16 @@ export function ReportsScreen() {
     settings.baseCurrency,
     8
   );
+  const insights = generateReportInsights({
+    transactions: filtered,
+    summary,
+    expenseByCategory,
+    trend,
+    budgets,
+    goals,
+    investments,
+    baseCurrency: settings.baseCurrency,
+  });
   const rangeOptions = [
     { label: t('dateRange.today'), value: 'today' as RangeMode },
     { label: t('dateRange.yesterday'), value: 'yesterday' as RangeMode },
@@ -326,6 +342,25 @@ export function ReportsScreen() {
     setCustomFrom(activeRange.from.slice(0, 10));
     setCustomTo(activeRange.to.slice(0, 10));
     setDateSheetVisible(true);
+  };
+
+  const renderInsightBody = (insight: ReportInsight) => {
+    const amount = insight.amount !== undefined && insight.currency ? formatMoney(Math.abs(insight.amount), insight.currency) : '';
+    const ratio =
+      insight.ratio !== undefined
+        ? new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 }).format(insight.ratio)
+        : '';
+    return fillTemplate(t(`insights.${insight.type}.body`), {
+      amount,
+      label: insight.label ?? '',
+      ratio,
+    });
+  };
+
+  const insightTone = (insight: ReportInsight) => {
+    if (insight.severity === 'positive') return theme.colors.success;
+    if (insight.severity === 'warning') return theme.colors.warning;
+    return theme.colors.primary;
   };
 
   const renderReportWidget = (id: ReportWidgetId) => {
@@ -588,6 +623,39 @@ export function ReportsScreen() {
           style={{ minWidth: 112 }}
         />
       </View>
+
+      <SectionHeader title={t('reports.financialInsights')} />
+      <Card style={{ gap: 10, backgroundColor: `${theme.colors.primary}08`, borderColor: `${theme.colors.primary}25` }}>
+        {insights.map((insight) => {
+          const color = insightTone(insight);
+          return (
+            <View key={`${insight.type}-${insight.label ?? ''}`} style={{ flexDirection: 'row', gap: 10 }}>
+              <View
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  backgroundColor: `${color}18`,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name={insight.icon as never} size={18} color={color} />
+              </View>
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '900' }}>
+                  {t(`insights.${insight.type}.title`)}
+                </Text>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12, lineHeight: 17 }}>
+                  {renderInsightBody(insight)}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+        <View style={{ height: 1, backgroundColor: theme.colors.border }} />
+        <Text style={{ color: theme.colors.textMuted, fontSize: 11, lineHeight: 16 }}>{t('insights.disclaimer')}</Text>
+      </Card>
 
       <BottomSheet
         visible={dateSheetVisible}

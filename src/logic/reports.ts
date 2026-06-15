@@ -1,5 +1,5 @@
 import { getRateToBase } from '../constants/currencies';
-import type { BaseCurrency, TransactionWithMeta, Wallet } from '../types';
+import type { BaseCurrency, BudgetWithUsage, GoalWithProgress, InvestmentRecord, TransactionWithMeta, Wallet } from '../types';
 import { isExpenseLike, isIncomeLike } from './ledger';
 
 export interface ReportSummary {
@@ -44,6 +44,42 @@ export interface HistoryRow {
   title: string;
   amount: number;
   subtitle: string;
+}
+
+export type ReportInsightType =
+  | 'no_data'
+  | 'positive_cashflow'
+  | 'negative_cashflow'
+  | 'high_expense_ratio'
+  | 'no_income'
+  | 'top_category'
+  | 'largest_transaction'
+  | 'expense_trend_up'
+  | 'expense_trend_down'
+  | 'budget_warning'
+  | 'goal_suggestion'
+  | 'fee_loss_tax_warning'
+  | 'investment_concentration';
+
+export interface ReportInsight {
+  type: ReportInsightType;
+  severity: 'positive' | 'info' | 'warning';
+  icon: string;
+  amount?: number;
+  currency?: BaseCurrency;
+  label?: string;
+  ratio?: number;
+}
+
+export interface ReportInsightInput {
+  transactions: TransactionWithMeta[];
+  summary: ReportSummary;
+  expenseByCategory: NamedTotal[];
+  trend: MonthlyPoint[];
+  budgets?: BudgetWithUsage[];
+  goals?: GoalWithProgress[];
+  investments?: InvestmentRecord[];
+  baseCurrency: BaseCurrency;
 }
 
 function activeTransactions(transactions: TransactionWithMeta[]) {
@@ -291,6 +327,188 @@ export function groupExpensesByCurrency(transactions: TransactionWithMeta[]): Na
   }, {});
 
   return Object.values(totals).sort((a, b) => b.total - a.total);
+}
+
+function largestReportTransaction(transactions: TransactionWithMeta[], baseCurrency: BaseCurrency) {
+  return activeTransactions(transactions)
+    .filter((transaction) => transaction.type !== 'transfer' && transaction.type !== 'exchange')
+    .sort((a, b) => Math.abs(valueInBase(b, baseCurrency)) - Math.abs(valueInBase(a, baseCurrency)))[0];
+}
+
+function expenseTrendInsight(trend: MonthlyPoint[]): ReportInsight | null {
+  const points = trend.filter((point) => point.expenses > 0);
+  if (points.length < 2) return null;
+
+  const first = points[0];
+  const latest = points[points.length - 1];
+  if (latest.expenses >= first.expenses * 1.2) {
+    return {
+      type: 'expense_trend_up',
+      severity: 'warning',
+      icon: 'trending-up-outline',
+      amount: latest.expenses - first.expenses,
+    };
+  }
+
+  if (latest.expenses <= first.expenses * 0.8) {
+    return {
+      type: 'expense_trend_down',
+      severity: 'positive',
+      icon: 'trending-down-outline',
+      amount: first.expenses - latest.expenses,
+    };
+  }
+
+  return null;
+}
+
+function investmentConcentrationInsight(investments: InvestmentRecord[], baseCurrency: BaseCurrency): ReportInsight | null {
+  const totals = investments
+    .filter((investment) => !investment.deletedAt)
+    .reduce<Record<string, number>>((acc, investment) => {
+      const value = Math.abs(investment.currentValue ?? investment.amount ?? 0) * getRateToBase(baseCurrency, investment.currency);
+      if (value <= 0) return acc;
+      const key = investment.assetName || investment.assetType;
+      acc[key] = (acc[key] ?? 0) + value;
+      return acc;
+    }, {});
+
+  const rows = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const total = rows.reduce((sum, [, value]) => sum + value, 0);
+  if (rows.length < 2 || total <= 0) return null;
+
+  const [label, amount] = rows[0];
+  const ratio = amount / total;
+  if (ratio < 0.7) return null;
+
+  return {
+    type: 'investment_concentration',
+    severity: 'warning',
+    icon: 'pie-chart-outline',
+    amount,
+    currency: baseCurrency,
+    label,
+    ratio,
+  };
+}
+
+export function generateReportInsights({
+  transactions,
+  summary,
+  expenseByCategory,
+  trend,
+  budgets = [],
+  goals = [],
+  investments = [],
+  baseCurrency,
+}: ReportInsightInput): ReportInsight[] {
+  const rows = activeTransactions(transactions);
+  if (rows.length === 0) {
+    return [{ type: 'no_data', severity: 'info', icon: 'information-circle-outline' }];
+  }
+
+  const insights: ReportInsight[] = [];
+  const totalOutflow = summary.expenses + summary.losses + summary.investments;
+  const savingsRate = summary.income > 0 ? summary.netCashflow / summary.income : 0;
+  const overBudget = budgets.find((budget) => budget.isOverBudget);
+  const feeLossTaxTotal = summary.fees + summary.losses + summary.taxes;
+  const largest = largestReportTransaction(rows, baseCurrency);
+  const trendInsight = expenseTrendInsight(trend);
+  const concentration = investmentConcentrationInsight(investments, baseCurrency);
+
+  if (overBudget) {
+    insights.push({
+      type: 'budget_warning',
+      severity: 'warning',
+      icon: 'speedometer-outline',
+      label: overBudget.categoryName ?? overBudget.name,
+      amount: (overBudget.usedAmount - overBudget.amountLimit) * getRateToBase(baseCurrency, overBudget.currency),
+      currency: baseCurrency,
+    });
+  }
+
+  if (summary.netCashflow < 0) {
+    insights.push({
+      type: 'negative_cashflow',
+      severity: 'warning',
+      icon: 'alert-circle-outline',
+      amount: Math.abs(summary.netCashflow),
+      currency: baseCurrency,
+    });
+  } else if (summary.netCashflow > 0) {
+    insights.push({
+      type: 'positive_cashflow',
+      severity: 'positive',
+      icon: 'checkmark-circle-outline',
+      amount: summary.netCashflow,
+      currency: baseCurrency,
+      ratio: savingsRate,
+    });
+  }
+
+  if (summary.income <= 0 && totalOutflow > 0) {
+    insights.push({ type: 'no_income', severity: 'warning', icon: 'trending-down-outline', amount: totalOutflow, currency: baseCurrency });
+  } else if (summary.income > 0 && totalOutflow / summary.income >= 0.8) {
+    insights.push({
+      type: 'high_expense_ratio',
+      severity: 'warning',
+      icon: 'speedometer-outline',
+      ratio: totalOutflow / summary.income,
+    });
+  }
+
+  const topCategory = expenseByCategory[0];
+  if (topCategory && topCategory.total > 0) {
+    insights.push({
+      type: 'top_category',
+      severity: 'info',
+      icon: 'pricetag-outline',
+      label: topCategory.label,
+      amount: topCategory.total,
+      currency: baseCurrency,
+    });
+  }
+
+  if (largest) {
+    insights.push({
+      type: 'largest_transaction',
+      severity: 'info',
+      icon: 'receipt-outline',
+      label: largest.categoryName ?? largest.note ?? largest.type,
+      amount: valueInBase(largest, baseCurrency),
+      currency: baseCurrency,
+    });
+  }
+
+  if (trendInsight) {
+    insights.push({ ...trendInsight, currency: baseCurrency });
+  }
+
+  if (feeLossTaxTotal > 0 && (summary.income <= 0 || feeLossTaxTotal / Math.max(summary.income, totalOutflow, 1) >= 0.15)) {
+    insights.push({
+      type: 'fee_loss_tax_warning',
+      severity: 'warning',
+      icon: 'warning-outline',
+      amount: feeLossTaxTotal,
+      currency: baseCurrency,
+    });
+  }
+
+  if (goals.some((goal) => goal.status === 'active') && summary.netCashflow > 0) {
+    insights.push({
+      type: 'goal_suggestion',
+      severity: 'positive',
+      icon: 'flag-outline',
+      amount: summary.netCashflow,
+      currency: baseCurrency,
+    });
+  }
+
+  if (concentration) {
+    insights.push(concentration);
+  }
+
+  return insights.slice(0, 8);
 }
 
 export function walletDistribution(wallets: Wallet[], baseCurrency: BaseCurrency): NamedTotal[] {

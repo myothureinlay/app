@@ -11,6 +11,7 @@ export type RootStackParamList = {
   ManageCategories: undefined;
   TransactionDetail: { transactionId: string };
   EditTransaction: { transactionId: string };
+  EditProfile: undefined;
   ThemePicker: undefined;
   LanguagePicker: undefined;
   ManageCurrencies: undefined;

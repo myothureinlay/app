@@ -5,9 +5,10 @@ import { useColorScheme } from 'react-native';
 
 import { setI18nLocale } from '../i18n';
 import { supportedLanguages } from '../i18n/languages';
+import { defaultUserProfile, mergeUserProfile, normalizeUserProfile } from '../logic/profile';
 import { themes, type AppTheme, type ColorSchemeName } from '../theme/colors';
 import type { ThemePreset } from '../types';
-import type { AppSettings, BaseCurrency, LanguageCode, ThemePreference } from '../types';
+import type { AppSettings, BaseCurrency, LanguageCode, ThemePreference, UserProfile } from '../types';
 
 const storageKey = '@personal-finance/settings';
 
@@ -24,6 +25,7 @@ const defaultSettings: AppSettings = {
   baseCurrency: 'USD',
   dashboardCurrencyFilter: 'all',
   iconStyle: 'line',
+  profile: defaultUserProfile,
   googleAutoBackup: 'off',
   recentThemes: [],
   dashboardWidgets: { order: [], hidden: [] },
@@ -35,6 +37,8 @@ function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
   return {
     ...defaultSettings,
     ...settings,
+    iconStyle: 'line',
+    profile: normalizeUserProfile(settings.profile),
     dashboardWidgets: {
       ...(defaultSettings.dashboardWidgets ?? { order: [], hidden: [] }),
       ...settings.dashboardWidgets,
@@ -58,6 +62,8 @@ interface PreferencesContextValue {
   setThemePreference: (theme: ThemePreference) => Promise<void>;
   setLanguage: (language: LanguageCode) => Promise<void>;
   setBaseCurrency: (currency: BaseCurrency) => Promise<void>;
+  profile: UserProfile;
+  updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
 }
 
 const AppPreferencesContext = createContext<PreferencesContextValue | null>(null);
@@ -98,6 +104,11 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
     await AsyncStorage.setItem(storageKey, JSON.stringify(next));
   };
 
+  const updateProfile = async (profilePatch: Partial<UserProfile>) => {
+    const timestamp = new Date().toISOString();
+    await updateSettings({ profile: mergeUserProfile(settings.profile ?? defaultUserProfile, profilePatch, timestamp) });
+  };
+
   const rememberTheme = async (theme: ThemePreference) => {
     const nextTheme = theme === 'custom' ? 'system' : theme;
     const recentThemes = [nextTheme, ...(settings.recentThemes ?? []).filter((item) => item !== nextTheme && item !== 'custom')].slice(0, 4);
@@ -113,6 +124,8 @@ export function AppPreferencesProvider({ children }: PropsWithChildren) {
       setThemePreference: rememberTheme,
       setLanguage: (language) => updateSettings({ language }),
       setBaseCurrency: (baseCurrency) => updateSettings({ baseCurrency }),
+      profile: settings.profile ?? defaultUserProfile,
+      updateProfile,
     }),
     [settings, resolvedScheme, activeTheme]
   );
