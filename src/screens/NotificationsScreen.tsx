@@ -269,61 +269,67 @@ export function NotificationsScreen() {
               <SectionHeader title={section.title} />
               <Card style={{ gap: 0, paddingVertical: 4 }}>
                 {rows.map((item, index) => (
-                  <Pressable
+                  <View
                     key={item.id}
-                    accessibilityRole="button"
-                    onPress={() => openTarget(item)}
-                    style={({ pressed }) => ({
+                    style={{
                       flexDirection: 'row',
-                      gap: 12,
-                      paddingVertical: 12,
+                      gap: 10,
+                      paddingVertical: 10,
                       borderTopWidth: index === 0 ? 0 : 1,
                       borderTopColor: theme.colors.border,
                       opacity: item.read ? 0.68 : 1,
-                      backgroundColor: pressed ? theme.colors.surfaceElevated : 'transparent',
-                    })}
+                    }}
                   >
-                    <View
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 10,
-                        backgroundColor: `${item.color}18`,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => openTarget(item)}
+                      style={({ pressed }) => ({
+                        flex: 1,
+                        flexDirection: 'row',
+                        gap: 12,
+                        borderRadius: 12,
+                        backgroundColor: pressed ? theme.colors.surfaceElevated : 'transparent',
+                      })}
                     >
-                      <Ionicons name={iconForStyle(item.icon, settings.iconStyle) as never} size={19} color={item.color} />
-                    </View>
-                    <View style={{ flex: 1, gap: 3 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        {!item.read ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.primary }} /> : null}
-                        <Text style={{ flex: 1, color: theme.colors.text, fontSize: 15, fontWeight: '900' }}>{item.title}</Text>
+                      <View
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          backgroundColor: `${item.color}18`,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Ionicons name={iconForStyle(item.icon, settings.iconStyle) as never} size={18} color={item.color} />
                       </View>
-                      <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>{item.message}</Text>
-                      <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontWeight: '800' }}>
-                        {formatTimestamp(item.createdAt, locale)}
-                      </Text>
-                    </View>
+                      <View style={{ flex: 1, gap: 3 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          {!item.read ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.primary }} /> : null}
+                          <Text style={{ flex: 1, color: theme.colors.text, fontSize: 15, fontWeight: '900' }}>{item.title}</Text>
+                        </View>
+                        <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>{item.message}</Text>
+                        <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontWeight: '800' }}>
+                          {formatTimestamp(item.createdAt, locale)}
+                        </Text>
+                      </View>
+                    </Pressable>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={t('notifications.clearOne')}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        clearOne(item.id);
-                      }}
+                      onPress={() => clearOne(item.id)}
                       style={({ pressed }) => ({
-                        width: 34,
-                        height: 34,
+                        width: 32,
+                        height: 32,
                         borderRadius: 9,
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor: pressed ? theme.colors.surfaceElevated : 'transparent',
                       })}
                     >
-                      <Ionicons name={iconForStyle('close-circle-outline', settings.iconStyle) as never} size={19} color={theme.colors.textMuted} />
+                      <Ionicons name={iconForStyle('close-circle-outline', settings.iconStyle) as never} size={18} color={theme.colors.textMuted} />
                     </Pressable>
-                  </Pressable>
+                  </View>
                 ))}
               </Card>
             </View>

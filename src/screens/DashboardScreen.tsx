@@ -56,12 +56,44 @@ function ProgressBar({ value, color }: { value: number; color: string }) {
 
 function HeroMetric({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ flex: 1, gap: 3 }}>
+    <View style={{ flex: 1, gap: 2 }}>
       <Text style={{ color: '#FFFFFFB8', fontSize: 11, fontWeight: '800' }}>{label}</Text>
-      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
+      <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
     </View>
+  );
+}
+
+function DashboardIconButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  onPress: () => void;
+}) {
+  const { theme } = useAppPreferences();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: pressed ? theme.colors.surfaceElevated : theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+      })}
+    >
+      <Ionicons name={icon as never} size={20} color={theme.colors.text} />
+    </Pressable>
   );
 }
 
@@ -79,22 +111,22 @@ function SummaryTile({
   const { theme } = useAppPreferences();
 
   return (
-    <Card style={{ flex: 1, gap: 7, padding: 10, minHeight: 84 }}>
+    <Card style={{ flex: 1, gap: 6, padding: 9, minHeight: 76 }}>
       <View
         style={{
-          width: 28,
-          height: 28,
+          width: 26,
+          height: 26,
           borderRadius: 8,
           backgroundColor: `${color}18`,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={icon as never} size={16} color={color} />
+        <Ionicons name={icon as never} size={15} color={color} />
       </View>
       <View style={{ gap: 3 }}>
         <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontWeight: '800' }}>{label}</Text>
-        <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
+        <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
           {value}
         </Text>
       </View>
@@ -164,6 +196,7 @@ export function DashboardScreen() {
         { route: 'ThemePicker', label: t('settings.themePicker'), icon: 'color-palette-outline' },
         { route: 'LanguagePicker', label: t('settings.languagePicker'), icon: 'language-outline' },
         { route: 'Settings', label: t('settings.baseCurrency'), icon: 'cash-outline', detail: settings.baseCurrency },
+        { route: 'CustomizeDashboard', label: t('widgets.customizeDashboard'), icon: 'options-outline' },
       ],
     },
     {
@@ -198,49 +231,27 @@ export function DashboardScreen() {
     switch (id) {
       case 'balanceSummary':
         return (
-          <LinearGradient
-            colors={
-              isAurora
-                ? ['#0B1E35', '#123D68', '#4C1D95', '#F6C85F']
-                : [theme.colors.primaryDark, theme.colors.primary, theme.colors.accent]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ borderRadius: theme.radius.lg + 6, padding: 18, gap: 18, overflow: 'hidden' }}
-          >
-            <View
+          <View style={{ gap: 10 }}>
+            <Card
               style={{
-                position: 'absolute',
-                right: -42,
-                top: -42,
-                width: 150,
-                height: 150,
-                borderRadius: 75,
-                backgroundColor: '#FFFFFF18',
+                padding: 10,
+                backgroundColor: isAurora ? '#0A1829D8' : theme.colors.surface,
+                borderColor: isAurora ? '#FFFFFF20' : theme.colors.border,
               }}
-            />
-            <View
-              style={{
-                position: 'absolute',
-                left: -58,
-                bottom: -70,
-                width: 190,
-                height: 190,
-                borderRadius: 95,
-                backgroundColor: '#00000010',
-              }}
-            />
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
-              <View style={{ flex: 1, gap: 5 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, flex: 1 }}>
                   <Pressable
                     accessibilityRole="button"
-                    onPress={() => setAccountVisible(true)}
+                    accessibilityLabel={t('dashboard.openProfile')}
+                    onPress={() => navigation.navigate('EditProfile' as never)}
                     style={({ pressed }) => ({
-                      width: 38,
-                      height: 38,
-                      borderRadius: 19,
-                      backgroundColor: pressed ? '#FFFFFF30' : '#FFFFFF22',
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: pressed ? theme.colors.surfaceElevated : `${theme.colors.primary}16`,
+                      borderWidth: 1,
+                      borderColor: `${theme.colors.primary}30`,
                       alignItems: 'center',
                       justifyContent: 'center',
                       overflow: 'hidden',
@@ -249,69 +260,85 @@ export function DashboardScreen() {
                     {profile.profileImageUri ? (
                       <Image source={{ uri: profile.profileImageUri }} style={{ width: '100%', height: '100%' }} />
                     ) : (
-                      <Ionicons name="person-circle-outline" size={24} color="#FFFFFF" />
+                      <Ionicons name="person-circle-outline" size={26} color={theme.colors.primary} />
                     )}
                   </Pressable>
                   <View
                     style={{
                       alignSelf: 'flex-start',
-                      paddingHorizontal: 10,
-                      paddingVertical: 5,
+                      paddingHorizontal: 9,
+                      paddingVertical: 4,
                       borderRadius: 999,
-                      backgroundColor: '#FFFFFF22',
+                      backgroundColor: `${theme.colors.primary}14`,
+                      borderWidth: 1,
+                      borderColor: `${theme.colors.primary}24`,
                     }}
                   >
-                    <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>{t('dashboard.v7Label')}</Text>
+                    <Text style={{ color: theme.colors.primary, fontSize: 11, fontWeight: '900' }}>{t('dashboard.v7Label')}</Text>
                   </View>
                 </View>
-                <Text style={{ color: '#FFFFFFC8', fontSize: 13, fontWeight: '800' }}>{t('dashboard.greeting')}</Text>
-                <Text style={{ color: '#FFFFFF', fontSize: 27, fontWeight: '900' }}>{t('dashboard.title')}</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <DashboardIconButton icon="options-outline" label={t('dashboard.openSettings')} onPress={() => setAccountVisible(true)} />
+                  <DashboardIconButton
+                    icon="notifications-outline"
+                    label={t('dashboard.openNotifications')}
+                    onPress={() => navigation.navigate('Notifications' as never)}
+                  />
+                </View>
               </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setCustomizeVisible(true)}
-                  style={({ pressed }) => ({
-                    width: 42,
-                    height: 42,
-                    borderRadius: 12,
-                    backgroundColor: pressed ? '#FFFFFF30' : '#FFFFFF20',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  })}
-                >
-                  <Ionicons name="options-outline" size={21} color="#FFFFFF" />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => navigation.navigate('Notifications' as never)}
-                  style={({ pressed }) => ({
-                    width: 42,
-                    height: 42,
-                    borderRadius: 12,
-                    backgroundColor: pressed ? '#FFFFFF30' : '#FFFFFF20',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  })}
-                >
-                  <Ionicons name="notifications-outline" size={21} color="#FFFFFF" />
-                </Pressable>
+            </Card>
+
+            <LinearGradient
+              colors={
+                isAurora
+                  ? ['#0B1E35', '#123D68', '#4C1D95', '#F6C85F']
+                  : [theme.colors.primaryDark, theme.colors.primary, theme.colors.accent]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ borderRadius: theme.radius.lg + 4, padding: 16, gap: 14, overflow: 'hidden' }}
+            >
+              <View
+                style={{
+                  position: 'absolute',
+                  right: -34,
+                  top: -42,
+                  width: 132,
+                  height: 132,
+                  borderRadius: 66,
+                  backgroundColor: '#FFFFFF14',
+                }}
+              />
+              <View
+                style={{
+                  position: 'absolute',
+                  left: -58,
+                  bottom: -76,
+                  width: 170,
+                  height: 170,
+                  borderRadius: 85,
+                  backgroundColor: '#0000000E',
+                }}
+              />
+              <View style={{ gap: 3 }}>
+                <Text style={{ color: '#FFFFFFC8', fontSize: 12, fontWeight: '800' }}>{t('dashboard.greeting')}</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 25, fontWeight: '900' }}>{t('dashboard.title')}</Text>
               </View>
-            </View>
 
-            <View style={{ gap: 5 }}>
-              <Text style={{ color: '#FFFFFFB8', fontSize: 12, fontWeight: '800' }}>{t('dashboard.netWorth')}</Text>
-              <Text style={{ color: '#FFFFFF', fontSize: 35, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
-                {formatMoney(netWorth, settings.baseCurrency)}
-              </Text>
-            </View>
+              <View style={{ gap: 4 }}>
+                <Text style={{ color: '#FFFFFFB8', fontSize: 12, fontWeight: '800' }}>{t('dashboard.netWorth')}</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 32, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
+                  {formatMoney(netWorth, settings.baseCurrency)}
+                </Text>
+              </View>
 
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <HeroMetric label={t('dashboard.monthlyIncome')} value={formatMoney(summary.income, settings.baseCurrency)} />
-              <HeroMetric label={t('dashboard.monthlyExpenses')} value={formatMoney(summary.expenses + summary.losses, settings.baseCurrency)} />
-              <HeroMetric label={t('dashboard.netCashflow')} value={formatMoney(summary.netCashflow, settings.baseCurrency)} />
-            </View>
-          </LinearGradient>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <HeroMetric label={t('dashboard.monthlyIncome')} value={formatMoney(summary.income, settings.baseCurrency)} />
+                <HeroMetric label={t('dashboard.monthlyExpenses')} value={formatMoney(summary.expenses + summary.losses, settings.baseCurrency)} />
+                <HeroMetric label={t('dashboard.netCashflow')} value={formatMoney(summary.netCashflow, settings.baseCurrency)} />
+              </View>
+            </LinearGradient>
+          </View>
         );
       case 'monthlyIncome':
         return (
@@ -334,11 +361,11 @@ export function DashboardScreen() {
         return null;
       case 'netCashflow':
         return (
-          <Card style={{ gap: 9, padding: 11 }}>
+          <Card style={{ gap: 8, padding: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '900' }}>{t('dashboard.monthlyPulse')}</Text>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: 2 }}>{t('dashboard.monthlyPulseBody')}</Text>
+                <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }}>{t('dashboard.monthlyPulse')}</Text>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>{t('dashboard.monthlyPulseBody')}</Text>
               </View>
               <Text style={{ color: summary.netCashflow >= 0 ? theme.colors.success : theme.colors.danger, fontSize: 15, fontWeight: '900' }}>
                 {formatMoney(summary.netCashflow, settings.baseCurrency)}
@@ -504,13 +531,13 @@ export function DashboardScreen() {
         onClose={() => setCustomizeVisible(false)}
       />
       <BottomSheet visible={accountVisible} title={t('account.title')} onClose={() => setAccountVisible(false)}>
-        <Card style={{ gap: 12, backgroundColor: `${theme.colors.primary}10`, borderColor: `${theme.colors.primary}30` }}>
+        <Card style={{ gap: 10, padding: 10, backgroundColor: `${theme.colors.primary}08`, borderColor: `${theme.colors.primary}22` }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View
               style={{
-                width: 58,
-                height: 58,
-                borderRadius: 29,
+                width: 50,
+                height: 50,
+                borderRadius: 25,
                 overflow: 'hidden',
                 backgroundColor: `${theme.colors.primary}18`,
                 alignItems: 'center',
@@ -520,7 +547,7 @@ export function DashboardScreen() {
               {profile.profileImageUri ? (
                 <Image source={{ uri: profile.profileImageUri }} style={{ width: '100%', height: '100%' }} />
               ) : (
-                <Ionicons name="person-circle-outline" size={38} color={theme.colors.primary} />
+                <Ionicons name="person-circle-outline" size={32} color={theme.colors.primary} />
               )}
             </View>
             <View style={{ flex: 1, gap: 4 }}>
@@ -552,48 +579,52 @@ export function DashboardScreen() {
                   {profile.mobileNumber}
                 </Text>
               ) : null}
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12, lineHeight: 17 }}>{t('profile.localOnly')}</Text>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 11, lineHeight: 16 }}>{t('profile.localOnly')}</Text>
             </View>
           </View>
         </Card>
         {accountSections.map((section) => (
-          <View key={section.title} style={{ gap: 7 }}>
+          <View key={section.title} style={{ gap: 6 }}>
             <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '900' }}>{section.title}</Text>
-            <View style={{ gap: 6 }}>
+            <View style={{ gap: 5 }}>
               {section.rows.map((row) => (
                 <Pressable
                   key={`${section.title}-${row.label}`}
                   accessibilityRole="button"
                   onPress={() => {
                     setAccountVisible(false);
+                    if (row.route === 'CustomizeDashboard') {
+                      setCustomizeVisible(true);
+                      return;
+                    }
                     navigation.navigate(row.route as never);
                   }}
                   style={({ pressed }) => ({
-                    minHeight: 44,
+                    minHeight: 40,
                     borderRadius: theme.radius.md,
                     borderWidth: 1,
                     borderColor: theme.colors.border,
                     backgroundColor: pressed ? theme.colors.surfaceElevated : theme.colors.surface,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 10,
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
+                    gap: 9,
+                    paddingHorizontal: 9,
+                    paddingVertical: 6,
                   })}
                 >
                   <View
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 10,
-                      backgroundColor: `${theme.colors.primary}18`,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 9,
+                      backgroundColor: `${theme.colors.primary}14`,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <Ionicons name={row.icon as never} size={19} color={theme.colors.primary} />
+                    <Ionicons name={row.icon as never} size={17} color={theme.colors.primary} />
                   </View>
-                  <Text style={{ flex: 1, color: theme.colors.text, fontSize: 14, fontWeight: '900' }} numberOfLines={1}>
+                  <Text style={{ flex: 1, color: theme.colors.text, fontSize: 13, fontWeight: '900' }} numberOfLines={1}>
                     {row.label}
                   </Text>
                   {row.detail ? (
@@ -609,7 +640,7 @@ export function DashboardScreen() {
         ))}
         <View style={{ gap: 7 }}>
           <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '900' }}>{t('account.build')}</Text>
-          <Card style={{ gap: 3, padding: 10, backgroundColor: `${theme.colors.primary}10`, borderColor: `${theme.colors.primary}30` }}>
+          <Card style={{ gap: 2, padding: 9, backgroundColor: `${theme.colors.primary}08`, borderColor: `${theme.colors.primary}22` }}>
             <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '900' }}>{BUILD_INFO.shortLabel}</Text>
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
               {BUILD_INFO.label}

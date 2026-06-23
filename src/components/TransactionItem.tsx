@@ -36,7 +36,7 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        paddingVertical: 10,
+        paddingVertical: 8,
         opacity: pressed ? 0.76 : 1,
       })}
     >
@@ -61,11 +61,15 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
           {transaction.toWalletName ? ` -> ${transaction.toWalletName}` : ''} · {formatDate(transaction.date, locale)}
         </Text>
       </View>
-      <View style={{ alignItems: 'flex-end', gap: 3 }}>
-        <Text style={{ color, fontSize: 15, fontWeight: '900' }} numberOfLines={1}>
+      <View style={{ alignItems: 'flex-end', gap: 3, minWidth: 104, maxWidth: '42%' }}>
+        <Text style={{ color, fontSize: 14, fontWeight: '900' }} numberOfLines={1} adjustsFontSizeToFit>
           {formatTransactionPrimaryAmount(transaction)}
         </Text>
-        {baseAmountLabel ? <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{baseAmountLabel}</Text> : null}
+        {baseAmountLabel ? (
+          <Text style={{ color: theme.colors.textMuted, fontSize: 11 }} numberOfLines={1} adjustsFontSizeToFit>
+            {baseAmountLabel}
+          </Text>
+        ) : null}
       </View>
     </Pressable>
   );

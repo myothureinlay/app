@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 
+import { BUILD_INFO } from '../src/constants/build';
 import { calculateBudgetUsage, enrichBudgetWithUsage } from '../src/logic/budgets';
 import { manualSections } from '../src/constants/manual';
 import { en } from '../src/i18n/locales/en';
@@ -159,6 +160,15 @@ function goal(overrides: Partial<Goal> = {}): Goal {
 }
 
 function run() {
+  assert.equal(BUILD_INFO.appVersion, '7.3.0', 'V7.3 build info version is current');
+  assert.equal(BUILD_INFO.label, 'Mobile V7.3 UI refinement', 'V7.3 build label is current');
+  assert.equal(en.dashboard.v7Label, 'Mobile V7.3', 'dashboard build pill uses V7.3 label');
+  for (const locale of [en, my, th, zhHans]) {
+    assert.ok(locale.dashboard.openProfile, 'profile accessibility label exists');
+    assert.ok(locale.dashboard.openSettings, 'settings accessibility label exists');
+    assert.ok(locale.dashboard.openNotifications, 'notifications accessibility label exists');
+  }
+
   assert.deepEqual(getWalletDeltas(tx('income', 100)), [{ walletId: 'wallet-a', amount: 100 }], 'income increases balance');
   assert.deepEqual(getWalletDeltas(tx('expense', 40)), [{ walletId: 'wallet-a', amount: -40 }], 'expense decreases balance');
   assert.deepEqual(

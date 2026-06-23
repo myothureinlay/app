@@ -4,6 +4,21 @@ A React Native app built with Expo, TypeScript, and SQLite. It stores your finan
 
 This guide is written for beginners on macOS. The normal Android APK build path uses Expo EAS Build in the cloud, so you do not need to install Android Studio just to create an APK.
 
+## Version 7.3 Mobile V7.3
+
+- Splits the Dashboard hero into a compact profile/settings bar and a separate summary hero.
+- Makes the profile/avatar icon open Edit Profile directly; the sliders button opens the account/settings hub and the bell opens Notifications.
+- Reduces heavy shadows and gray outer glow across cards, sheets, tabs, FAB, Records, Dashboard, About, and account/settings surfaces.
+- Compacts Dashboard metric cards, monthly pulse, and chart spacing while keeping the root FAB and bottom tabs unchanged.
+- Cleans Records matching summary and grouped record rows for a lighter Material-style Android feel.
+- Keeps V7.2 profile, report insights, base-currency edit fix, About/User Manual, backups, and line-only icons intact.
+
+Android preview build command:
+
+```bash
+eas build --platform android --profile preview --clear-cache
+```
+
 ## Version 7.2 Mobile V7.2
 
 - Fixes add/edit transaction currency and base currency preservation, including THB/USD, USDT/USD, and exchange records.

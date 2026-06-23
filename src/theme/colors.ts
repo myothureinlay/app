@@ -53,8 +53,8 @@ function makeTheme(
     recommendedIconStyle: style.recommendedIconStyle ?? 'line',
     chartPalette: style.chartPalette ?? [colors.primary, colors.success, colors.danger, colors.warning, colors.secondary, colors.accent],
     elevation: {
-      card: scheme === 'dark' ? 1 : 2,
-      sheet: 5,
+      card: 1,
+      sheet: scheme === 'dark' ? 2 : 3,
     },
     colors,
     spacing: (value: number) => value * 8,

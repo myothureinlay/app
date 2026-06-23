@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppPreferences } from '../context/AppPreferencesContext';
@@ -49,9 +49,20 @@ export function QuickAddFab() {
             bottom: Math.max(insets.bottom, 12) + 82,
             backgroundColor: isAurora ? `${theme.colors.surfaceElevated}` : theme.colors.primary,
             borderColor: isAurora ? `${theme.colors.primary}88` : `${theme.colors.primary}66`,
-            shadowColor: theme.colors.shadow,
             opacity: pressed ? 0.82 : 1,
           },
+          Platform.select({
+            web: {
+              boxShadow: `0 4px 12px ${theme.colors.shadow}${isAurora ? '22' : '18'}`,
+            } as ViewStyle,
+            default: {
+              shadowColor: theme.colors.shadow,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.09,
+              shadowRadius: 8,
+              elevation: 4,
+            },
+          }),
         ]}
       >
         <Ionicons name="add-outline" size={30} color={isAurora ? theme.colors.primary : '#FFFFFF'} />
@@ -97,10 +108,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    elevation: 6,
     zIndex: 20,
   },
 });

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image, Text, View } from 'react-native';
+import { Image, Platform, Text, View, type ViewStyle } from 'react-native';
 
 import { Card } from '../components/Card';
 import { Screen } from '../components/Screen';
@@ -37,18 +37,30 @@ function InfoRow({ icon, title, body }: { icon: string; title: string; body: str
 export function AboutScreen() {
   const { theme } = useAppPreferences();
   const { t } = useI18n();
-  const softCardStyle = {
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 1,
-  };
+  const softCardStyle = Platform.select({
+    web: { boxShadow: `0 1px 5px ${theme.colors.shadow}08` } as ViewStyle,
+    default: {
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.02,
+      shadowRadius: 5,
+      elevation: 1,
+    },
+  });
   return (
     <Screen>
       <ScreenHeader title={t('about.title')} subtitle={t('about.subtitle')} />
 
-      <Card style={{ ...softCardStyle, alignItems: 'center', gap: 12, paddingVertical: 22, backgroundColor: `${theme.colors.primary}10` }}>
-        <Image source={require('../../assets/icon.png')} style={{ width: 78, height: 78, borderRadius: 18 }} />
+      <Card
+        style={{
+          ...softCardStyle,
+          alignItems: 'center',
+          gap: 10,
+          paddingVertical: 18,
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+        }}
+      >
+        <Image source={require('../../assets/icon.png')} style={{ width: 70, height: 70, borderRadius: 16 }} />
         <View style={{ alignItems: 'center', gap: 4 }}>
           <Text style={{ color: theme.colors.text, fontSize: 22, fontWeight: '900' }}>{t('about.appName')}</Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '800' }}>

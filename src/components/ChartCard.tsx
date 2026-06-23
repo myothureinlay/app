@@ -30,7 +30,7 @@ export function ChartCard({ title, children }: ChartCardProps) {
   const { theme } = useAppPreferences();
 
   return (
-    <Card style={{ gap: 10 }}>
+    <Card style={{ gap: 8, padding: 11 }}>
       <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '900' }}>{title}</Text>
       {children}
     </Card>
@@ -90,8 +90,8 @@ export function MonthlyBarChart({ data }: { data: MonthlyChartDatum[] }) {
 export function LineTrendChart({ data }: { data: MonthlyChartDatum[] }) {
   const { theme } = useAppPreferences();
   const width = 320;
-  const height = 160;
-  const chartHeight = 110;
+  const height = 144;
+  const chartHeight = 98;
   const values = data.map((row) => row.cashflow);
   const maxAbs = Math.max(...values.map((value) => Math.abs(value)), 1);
   const step = width / Math.max(data.length - 1, 1);
