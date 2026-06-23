@@ -56,17 +56,17 @@ function RecordActionButton({
       accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 38,
-        height: 36,
-        borderRadius: 12,
+        width: 34,
+        height: 32,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: pressed ? `${color}24` : `${color}16`,
         borderWidth: 1,
-        borderColor: `${color}30`,
+        borderColor: `${color}24`,
       })}
     >
-      <Ionicons name={icon as never} size={20} color={color || theme.colors.primary} />
+      <Ionicons name={icon as never} size={18} color={color || theme.colors.primary} />
     </Pressable>
   );
 }
@@ -150,22 +150,22 @@ export function RecordsScreen() {
         }
       />
 
-      <Card style={{ gap: 10, backgroundColor: `${theme.colors.primary}10`, borderColor: `${theme.colors.primary}30` }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <Card style={{ gap: 8, padding: 10, backgroundColor: `${theme.colors.primary}08`, borderColor: `${theme.colors.primary}22` }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
           <View
             style={{
-              width: 42,
-              height: 42,
-              borderRadius: theme.radius.md,
-              backgroundColor: `${theme.colors.primary}18`,
+              width: 34,
+              height: 34,
+              borderRadius: 10,
+              backgroundColor: `${theme.colors.primary}14`,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="receipt-outline" size={20} color={theme.colors.primary} />
+            <Ionicons name="receipt-outline" size={18} color={theme.colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '900' }}>{records.length}</Text>
+            <Text style={{ color: theme.colors.text, fontSize: 17, fontWeight: '900' }}>{records.length}</Text>
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{t('records.matchingRecords')}</Text>
           </View>
         </View>
@@ -184,14 +184,22 @@ export function RecordsScreen() {
         grouped.map((group) => (
           <View key={group.key} style={{ gap: 8 }}>
             <SectionHeader title={formatDate(`${group.key}T00:00:00.000Z`, locale)} />
-            <Card style={{ gap: 6 }}>
-              {group.rows.map((record) => (
-                <View key={record.id} style={{ gap: 6 }}>
+            <Card style={{ gap: 2, paddingVertical: 4 }}>
+              {group.rows.map((record, index) => (
+                <View
+                  key={record.id}
+                  style={{
+                    gap: 4,
+                    paddingBottom: index === group.rows.length - 1 ? 0 : 6,
+                    borderBottomWidth: index === group.rows.length - 1 ? 0 : 1,
+                    borderBottomColor: theme.colors.border,
+                  }}
+                >
                   <TransactionItem
                     transaction={record}
                     onPress={() => navigation.navigate('TransactionDetail', { transactionId: record.id })}
                   />
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 54 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingLeft: 54 }}>
                     {record.deletedAt ? (
                       <>
                         <Text style={{ flex: 1, color: theme.colors.danger, fontSize: 12, fontWeight: '800' }}>

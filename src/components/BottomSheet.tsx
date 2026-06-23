@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { useAppPreferences } from '../context/AppPreferencesContext';
 
@@ -15,6 +15,18 @@ interface BottomSheetProps {
 export function BottomSheet({ visible, title, onClose, children, footer }: BottomSheetProps) {
   const { theme, settings } = useAppPreferences();
   const isAurora = settings.theme === 'auroraGlass';
+  const sheetShadowStyle = Platform.select({
+    web: {
+      boxShadow: `0 -3px 14px ${theme.colors.shadow}${isAurora ? '22' : '12'}`,
+    } as ViewStyle,
+    default: {
+      elevation: theme.elevation.sheet,
+      shadowColor: theme.colors.shadow,
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: isAurora ? 0.08 : 0.04,
+      shadowRadius: isAurora ? 10 : 7,
+    },
+  });
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -26,8 +38,8 @@ export function BottomSheet({ visible, title, onClose, children, footer }: Botto
             {
               backgroundColor: isAurora ? '#0A1829F2' : theme.colors.surface,
               borderColor: theme.colors.border,
-              elevation: theme.elevation.sheet,
             },
+            sheetShadowStyle,
           ]}
         >
           <View style={styles.handle} />
@@ -58,7 +70,7 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.42)',
+    backgroundColor: 'rgba(0, 0, 0, 0.34)',
   },
   sheet: {
     maxHeight: '86%',
@@ -67,12 +79,11 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     paddingTop: 8,
     overflow: 'hidden',
-    elevation: 5,
   },
   handle: {
     alignSelf: 'center',
     width: 44,
-    height: 5,
+    height: 4,
     borderRadius: 3,
     backgroundColor: '#9CA3AF66',
     marginBottom: 8,

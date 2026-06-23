@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NavigationContainer, type Theme as NavigationTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View } from 'react-native';
+import { Platform, View, type ViewStyle } from 'react-native';
 
 import { QuickAddFab } from '../components/QuickAddFab';
 import { useAppPreferences } from '../context/AppPreferencesContext';
@@ -38,6 +38,18 @@ function MainTabs() {
   const { theme, settings } = useAppPreferences();
   const { t } = useI18n();
   const isAurora = settings.theme === 'auroraGlass';
+  const tabBarShadowStyle = Platform.select({
+    web: {
+      boxShadow: `0 2px 10px ${theme.colors.shadow}${isAurora ? '24' : '12'}`,
+    } as ViewStyle,
+    default: {
+      elevation: isAurora ? 2 : 1,
+      shadowColor: theme.colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isAurora ? 0.07 : 0.035,
+      shadowRadius: isAurora ? 8 : 5,
+    },
+  });
 
   return (
     <View style={{ flex: 1 }}>
@@ -57,7 +69,7 @@ function MainTabs() {
             borderRadius: theme.radius.md + 8,
             borderTopWidth: 0,
             borderWidth: 1,
-            elevation: isAurora ? 4 : theme.elevation.card,
+            ...tabBarShadowStyle,
           },
           tabBarLabelStyle: {
             fontWeight: '800',
